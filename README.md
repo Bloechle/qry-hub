@@ -2,6 +2,8 @@
 
 Single-page launcher for my mini webapps — built with [qry.js](https://github.com/Bloechle/qry), zero other dependencies.
 
+**Live → [bloechle.github.io/qry-hub](https://bloechle.github.io/qry-hub/)**
+
 ## Structure
 
 ```
