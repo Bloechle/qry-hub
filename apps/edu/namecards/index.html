@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>$ name.cards</title>
+    <link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        /* ═══ THEME — inline copy of /theme.css ═══════════════════════════
+           Do not edit here: edit theme.css, then re-paste this block. ═══ */
+
+        :root {
+            --bg: #F4F7FB;
+            --card: #FFFFFF;
+            --ink: #0F1722;
+            --muted: #5B6B7D;
+            --accent: #0B6BCB;
+            --accent-soft: #E3EEFA;
+            --accent-glow: rgba(11, 107, 203, .25);
+            --border: #DCE4ED;
+            --ok: #15803D;
+            --warn: #B45309;
+            --err: #C2410C;
+            --radius: 12px;
+            --ring: 0 0 0 3px var(--accent-soft);
+            --shadow-card: 0 8px 20px rgba(15, 23, 34, .05);
+            --shadow-hover: 0 10px 24px rgba(11, 107, 203, .14);
+            --ease: cubic-bezier(.2, .8, .2, 1);
+            --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+            --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        ::selection { background: var(--accent); color: #fff; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            background-image: radial-gradient(rgba(11, 107, 203, .10) 1px, transparent 1px);
+            background-size: 26px 26px;
+            color: var(--ink);
+            font: 16px/1.5 var(--sans);
+        }
+
+        /* ── Header: command prompt ──────────────────────────────────── */
+        header h1 {
+            font: 700 2.4em/1.2 var(--mono);
+            letter-spacing: -.02em;
+            margin: 0 0 6px;
+        }
+
+        header h1 .prompt { color: var(--accent); }
+
+        header h1 .caret {
+            display: inline-block;
+            width: .55em;
+            height: 1.05em;
+            margin-left: 4px;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+            vertical-align: text-bottom;
+            animation: blink 1.1s steps(1) infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            header h1 .caret { animation: none; }
+        }
+
+        header p { margin: 0; color: var(--muted); }
+
+        /* ── Panel (main card) ───────────────────────────────────────── */
+        #panel {
+            width: min(var(--panel-w, 980px), 100%);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-card);
+            padding: 20px;
+        }
+
+        /* ── Controls (select, buttons) ──────────────────────────────── */
+        select, button {
+            font: 600 .95em var(--mono);
+            color: var(--ink);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
+        }
+
+        select:hover, select:focus-visible, button:hover, button:focus-visible {
+            border-color: var(--accent);
+            box-shadow: var(--ring);
+            outline: none;
+        }
+
+        button.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        /* ── Note (caption under the content) ────────────────────────── */
+        .note {
+            margin: 36px 0 28px;
+            text-align: center;
+            font: .9em var(--mono);
+            color: var(--muted);
+        }
+
+        /* ── Metrics (stable grid, no layout shift) ──────────────────── */
+        #metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+            gap: 8px;
+        }
+
+        .metric {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 7px 10px;
+            text-align: center;
+        }
+
+        .metric .label {
+            display: block;
+            font: 600 .65em var(--mono);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--muted);
+        }
+
+        .metric .value {
+            font: 600 .95em var(--mono);
+            font-variant-numeric: tabular-nums;
+            color: var(--ink);
+            white-space: nowrap;
+        }
+
+        /* ═══ END THEME ═══════════════════════════════════════════════ */
+
+        /* ─── App: namecards ─────────────────────────────────────────────── */
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px;
+            accent-color: var(--accent);
+        }
+
+        header { text-align: center; margin-bottom: 24px; }
+
+        #panel { --panel-w: 880px; }
+
+        #controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 640px) { #controls { grid-template-columns: 1fr; } }
+
+        label {
+            display: block;
+            font: 600 .8em var(--mono);
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        textarea, select, input[type=number] {
+            width: 100%;
+            padding: 9px 12px;
+            font: 1em var(--mono);
+            color: var(--ink);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        textarea { resize: vertical; min-height: 132px; }
+
+        textarea:focus, select:focus, input:focus {
+            border-color: var(--accent);
+            box-shadow: var(--ring);
+        }
+
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .field + .field { margin-top: 12px; }
+
+        #actions { display: flex; gap: 10px; margin-bottom: 16px; }
+
+        button {
+            padding: 10px 22px;
+            font: 600 .95em var(--mono);
+            color: #fff;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        button:hover { filter: brightness(1.12); }
+        button.secondary { color: var(--accent); background: var(--accent-soft); }
+
+        #preview {
+            display: block;
+            width: 100%;
+            aspect-ratio: 210 / 297;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1><span class="prompt">$</span> name.cards<span class="caret"></span></h1>
+    <p>Worksheets of first names — reading exercises as a printable PDF.</p>
+</header>
+
+<div id="panel">
+    <div id="controls">
+        <div>
+            <label for="names">first names (one per line)</label>
+            <textarea id="names" rows="6">RAPHAËL
+ELOÏSE
+MIKAEL
+ARNAUD
+ADRYEN</textarea>
+        </div>
+        <div>
+            <div class="field">
+                <label for="type">exercise</label>
+                <select id="type">
+                    <option value="matching">Retrouve les mêmes prénoms</option>
+                    <option value="scrambled">Trouve le bon prénom</option>
+                    <option value="circle">Entoure le prénom correct</option>
+                </select>
+            </div>
+            <div class="field row">
+                <div>
+                    <label for="rows">rows</label>
+                    <input type="number" id="rows" value="6" min="4" max="10">
+                </div>
+                <div>
+                    <label for="cols">columns</label>
+                    <input type="number" id="cols" value="3" min="2" max="4">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="actions">
+        <button id="regen" class="secondary">regenerate</button>
+        <button id="download">download PDF</button>
+    </div>
+
+    <iframe id="preview" title="PDF preview"></iframe>
+</div>
+
+<script>
+    // ═══ Exercise content ════════════════════════════════════════════════
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    const shuffle = (arr) => {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    };
+
+    // Plausible wrong spellings of a name
+    function scrambles(name) {
+        const out = [];
+        out.push(shuffle(name.split('')).join(''));                        // full shuffle
+        if (name.length > 3) {                                              // swapped pairs
+            const s = name.split('');
+            for (let i = 0; i < s.length - 1; i += 2) [s[i], s[i + 1]] = [s[i + 1], s[i]];
+            out.push(s.join(''));
+        }
+        out.push(name.split('').map((c, i) => i % 2 ? '_' : c).join(''));   // missing letters
+        return [...new Set(out)].filter(s => s !== name);
+    }
+
+    // Content of one grid cell, by exercise type
+    function cellContent(type, names) {
+        const name = pick(names);
+        if (type === 'matching') return [name];
+        if (type === 'scrambled')
+            return [Math.random() > 0.3 ? pick(scrambles(name)) ?? name : name];
+        // circle: the correct name among distractors
+        const others = names.filter(n => n !== name);
+        const options = new Set([name]);
+        while (options.size < 3) {
+            const distractor = others.length && Math.random() < 0.5
+                ? pick(others) : pick(scrambles(name));
+            if (distractor) options.add(distractor);
+            else break;
+        }
+        return shuffle([...options]);
+    }
+
+    // ═══ PDF (pure, testable: PDFLib injected as global) ═════════════════
+    const MM = 2.83465;                                                     // mm → pt
+    const TITLES = {
+        matching: 'Retrouve les mêmes prénoms !',
+        scrambled: 'Trouve le bon prénom !',
+        circle: 'Entoure le prénom correct !'
+    };
+
+    async function buildPdf({ names, type, rows, cols }) {
+        const { PDFDocument, StandardFonts, rgb } = PDFLib;
+        const doc = await PDFDocument.create();
+        const page = doc.addPage([210 * MM, 297 * MM]);
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+        const { width: W, height: H } = page.getSize();
+
+        const margin = 20 * MM;
+        const gray = rgb(0.78, 0.78, 0.78);
+        const black = rgb(0, 0, 0);
+
+        const center = (text, fnt, size, y) =>
+            page.drawText(text, { x: (W - fnt.widthOfTextAtSize(text, size)) / 2, y, size, font: fnt, color: black });
+
+        // Title
+        center(TITLES[type], bold, 18, H - margin - 10 * MM);
+
+        // Grid
+        const gridTop = H - margin - 25 * MM;
+        const gridH = gridTop - margin - 10 * MM;                           // keep room for footer
+        const cellW = (W - 2 * margin) / cols;
+        const cellH = gridH / rows;
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = margin + c * cellW;
+                const y = gridTop - (r + 1) * cellH;
+                page.drawRectangle({ x, y, width: cellW, height: cellH, borderColor: gray, borderWidth: 0.8 });
+
+                const lines = cellContent(type, names);
+                const size = lines.length > 1 ? 10 : 14;
+                const lineH = size * 1.5;
+                const blockH = lines.length * lineH;
+                lines.forEach((line, i) => {
+                    const ty = y + cellH / 2 + blockH / 2 - (i + 0.78) * lineH;
+                    page.drawText(line, {
+                        x: x + (cellW - font.widthOfTextAtSize(line, size)) / 2,
+                        y: ty, size, font, color: black
+                    });
+                });
+            }
+        }
+
+        // Footer
+        const fy = 15 * MM;
+        page.drawLine({
+            start: { x: margin, y: fy + 5 * MM }, end: { x: W - margin, y: fy + 5 * MM },
+            color: rgb(0.6, 0.6, 0.6), thickness: 0.6
+        });
+        page.drawText('Date : ____________________', { x: margin, y: fy, size: 10, font, color: black });
+        page.drawText('Nom : ____________________', { x: W / 2, y: fy, size: 10, font, color: black });
+
+        return doc;
+    }
+
+    // ═══ UI ══════════════════════════════════════════════════════════════
+    function readOptions() {
+        const names = $('#names').val().split('\n').map(n => n.trim()).filter(Boolean);
+        return {
+            names,
+            type: $('#type').val(),
+            rows: Math.min(10, Math.max(4, parseInt($('#rows').val()) || 6)),
+            cols: Math.min(4, Math.max(2, parseInt($('#cols').val()) || 3))
+        };
+    }
+
+    let pdfBytes = null;
+    let previewUrl = null;
+
+    async function generate() {
+        const opts = readOptions();
+        if (!opts.names.length) return;
+        try {
+            const doc = await buildPdf(opts);
+            pdfBytes = await doc.save();
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
+            $('#preview').attr('src', `${previewUrl}#toolbar=0&navpanes=0`);
+        } catch (e) {
+            alert(`PDF error: ${e.message}\n(les polices standard couvrent les caractères latins uniquement)`);
+        }
+    }
+
+    $.ready(() => {
+        let timer;
+        const debounced = () => { clearTimeout(timer); timer = setTimeout(generate, 400); };
+        ['#names', '#type', '#rows', '#cols'].forEach(s => $(s).on('input', debounced));
+
+        $('#regen').on('click', generate);
+        $('#download').on('click', () => {
+            if (!pdfBytes) return;
+            const a = $.create('a', {
+                href: URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' })),
+                download: 'fiche-prenoms.pdf'
+            });
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+
+        generate();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>UniFR — Exam Timer</title>
+    <link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
+    <script src="https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry.js"></script>
+    <style>
+        :root {
+            --blue-1: #003A6C;
+            --blue-2: #004A8C;
+            --accent: #005393;
+            --warn: #FFC94D;
+            --crit: #FF8A7A;
+            --radius: 14px;
+            --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, var(--blue-1) 0%, var(--blue-2) 50%, var(--blue-1) 100%);
+            color: #fff;
+            font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+
+        /* ── Progress bar ────────────────────────────────────────────── */
+        #progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3rem;
+            background: rgba(0, 0, 0, .25);
+        }
+
+        #bar {
+            height: 100%;
+            width: 100%;
+            background: rgba(255, 255, 255, .4);
+            transition: width 1s linear, background-color .5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body.warn #bar { background: rgba(255, 201, 77, .5); }
+        body.crit #bar { background: rgba(255, 138, 122, .55); }
+
+        #stripes {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(45deg, transparent 0 15px, rgba(255, 255, 255, .12) 15px 30px);
+            background-size: 42px 100%;
+        }
+
+        body.running #stripes { animation: flow 2s linear infinite; }
+
+        @keyframes flow { to { background-position: 42px 0; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            body.running #stripes { animation: none; }
+        }
+
+        /* ── Time display ────────────────────────────────────────────── */
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5rem 1rem 2rem;
+        }
+
+        #clock {
+            display: flex;
+            align-items: baseline;
+            gap: .25rem;
+            font-family: var(--mono);
+            text-shadow: 0 4px 20px rgba(0, 0, 0, .3);
+            transition: color .5s ease;
+        }
+
+        #clock .digits {
+            font-size: clamp(5rem, 18vw, 12rem);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #clock .unit {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            opacity: .6;
+            margin-right: .5rem;
+        }
+
+        body.warn #clock { color: var(--warn); }
+        body.crit #clock { color: var(--crit); }
+
+        /* ── Controls ────────────────────────────────────────────────── */
+        #controls {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            background: rgba(255, 255, 255, .08);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, .15);
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+        }
+
+        #controls .unit { opacity: .7; }
+
+        #duration {
+            width: 5rem;
+            padding: .55rem .75rem;
+            font: 600 1em var(--mono);
+            text-align: center;
+            color: #fff;
+            background: rgba(255, 255, 255, .12);
+            border: 1px solid rgba(255, 255, 255, .25);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        #duration:focus { border-color: rgba(255, 255, 255, .6); }
+
+        button {
+            font: 600 1em system-ui, sans-serif;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color .2s ease, transform .15s ease;
+        }
+
+        #reset {
+            width: 2.6rem;
+            height: 2.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, .15);
+            border-radius: 50%;
+            color: #fff;
+        }
+
+        #reset:hover { background: rgba(255, 255, 255, .28); }
+
+        #toggle {
+            padding: .65rem 1.5rem;
+            background: #2EA86B;
+            color: #fff;
+            min-width: 6.5rem;
+        }
+
+        #toggle:hover { transform: translateY(-1px); }
+
+        body.running #toggle { background: #E0A100; }
+
+        /* ── UniFR logo ──────────────────────────────────────────────── */
+        #logo {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            background: transparent;
+            padding: .75rem;
+            border-radius: var(--radius);
+        }
+
+        #logo:hover { background: rgba(255, 255, 255, .1); }
+
+        #logo svg { width: 64px; height: 74px; display: block; }
+
+        /* ── Instructions overlay ────────────────────────────────────── */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 48, 90, .93);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            z-index: 200;
+        }
+
+        #overlay.hidden { display: none; }
+
+        #overlay-title {
+            font-size: 2rem;
+            font-weight: 600;
+            margin: 0 0 1.5rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        #overlay-title:hover { opacity: .8; }
+
+        #close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.75rem;
+            background: transparent;
+            color: #fff;
+            font-size: 2rem;
+            line-height: 1;
+            padding: .25rem .5rem;
+        }
+
+        #close:hover { opacity: .7; }
+
+        #langs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            width: min(1400px, 100%);
+        }
+
+        @media (max-width: 900px) {
+            #langs { grid-template-columns: 1fr; overflow-y: auto; }
+        }
+
+        .lang-card {
+            background: #fff;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+        }
+
+        .lang-card h3 {
+            background: linear-gradient(135deg, var(--accent), #0066B3);
+            color: #fff;
+            margin: 0;
+            padding: 1.1rem 1.5rem;
+            font-size: 1.25rem;
+        }
+
+        .lang-card ul { list-style: none; margin: 0; padding: 0; }
+
+        .lang-card li {
+            padding: .8rem 1.5rem;
+            color: #374151;
+            font-size: .9rem;
+            line-height: 1.55;
+            border-bottom: 1px solid #F1F5F9;
+        }
+
+        .lang-card li:last-child { border-bottom: none; }
+        .lang-card li:nth-child(even) { background: #F8FAFC; }
+
+        @media (max-width: 600px) {
+            #controls { left: 1rem; right: 1rem; bottom: 1rem; justify-content: center; }
+            #logo { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div id="progress"><div id="bar"><div id="stripes"></div></div></div>
+
+<main>
+    <div id="clock">
+        <span class="digits" id="hours">02</span><span class="unit">h</span>
+        <span class="digits" id="minutes">00</span><span class="unit">min</span>
+    </div>
+</main>
+
+<button id="logo" title="Instructions">
+    <svg viewBox="0 0 30.5 36" fill="#fff" aria-label="UniFR">
+        <path d="M 1,6.67 V 1 h 3.5 v 5.34 c 0,0.74 0.17,1.48 1.12,1.48 0.96,0 1.13,-0.74 1.13,-1.48 V 1 h 3.49 v 5.67 c 0,2.86 -1.98,3.77 -4.62,3.77 C 2.98,10.44 1,9.53 1,6.67"/>
+        <path d="m 18.27,3.72 c 0.66,0.88 1.06,1.51 1.06,1.51 h 0.07 c 0,0 -0.04,-0.75 -0.04,-1.64 V 1 h 3.5 v 9.25 H 19.96 L 17.81,7.54 C 17.16,6.7 16.72,6.04 16.72,6.04 h -0.07 c 0,0 0.04,0.72 0.04,1.9 V 10.25 H 13.19 V 1 h 3.07 z"/>
+        <path d="M 29.5,10.25 H 26 V 1 h 3.5 z"/>
+        <path d="m 1.26,22.65 v -9.25 h 8.84 v 2.77 H 4.75 v 1.26 h 4.51 v 2.62 H 4.75 v 2.6 z"/>
+        <path d="m 1.01,35.02 h 9.22 v -9.21 h -9.22 z"/>
+        <path d="m 16.62,17.63 h 0.91 c 0.58,0 0.96,-0.25 0.96,-0.87 0,-0.54 -0.35,-0.84 -0.93,-0.84 h -0.94 z m 2.23,5.02 c -0.32,-0.31 -0.43,-0.59 -0.56,-1.14 L 18.12,20.78 c -0.12,-0.55 -0.38,-0.72 -0.87,-0.72 h -0.63 v 2.59 h -3.43 v -9.25 h 4.86 c 2.3,0 4.02,0.77 4.02,2.98 0,1.54 -0.82,2.22 -2.03,2.4 v 0.07 c 0.89,0.12 1.33,0.53 1.59,1.37 L 22,21.44 c 0.17,0.54 0.31,0.86 0.68,1.21 z"/>
+    </svg>
+</button>
+
+<div id="controls">
+    <input id="duration" type="number" min="1" max="300" value="120">
+    <span class="unit">min</span>
+    <button id="reset" title="Reset">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+        </svg>
+    </button>
+    <button id="toggle">Start</button>
+</div>
+
+<div id="overlay" class="hidden">
+    <button id="close" title="Fermer">×</button>
+    <h2 id="overlay-title"></h2>
+    <div id="langs"></div>
+</div>
+
+<script>
+    // ═══ Instructions (trilingual, {dur} substituted, null = book-mode line) ═══
+    const BOOK = {
+        open: {
+            fr: '<strong>Examen à livre ouvert</strong> : documents papier autorisés',
+            de: '<strong>Open-Book-Prüfung</strong>: Papierunterlagen erlaubt',
+            en: '<strong>Open book exam</strong>: paper documents allowed'
+        },
+        closed: {
+            fr: '<strong>Examen à livre fermé</strong> : aucun document autorisé',
+            de: '<strong>Geschlossene Prüfung</strong>: keine Unterlagen erlaubt',
+            en: '<strong>Closed book exam</strong>: no documents allowed'
+        }
+    };
+
+    const LANGS = [
+        { code: 'fr', name: 'Français', items: [
+            '<strong>Durée :</strong> {dur} minutes',
+            '<strong>Ne pas retourner</strong> l\'épreuve avant le début',
+            null,
+            'Appareils électroniques <strong>strictement interdits</strong>',
+            '<strong>Lisez attentivement</strong> et posez vos questions les 5 premières minutes',
+            '<strong>Remise de copie</strong> à tout moment, en silence',
+            'Présenter la <strong>carte d\'étudiant</strong> lors de la remise'
+        ]},
+        { code: 'de', name: 'Deutsch', items: [
+            '<strong>Dauer:</strong> {dur} Minuten',
+            'Prüfung <strong>nicht vor Beginn umdrehen</strong>',
+            null,
+            'Elektronische Geräte <strong>streng verboten</strong>',
+            '<strong>Lesen Sie aufmerksam</strong> und stellen Sie Fragen in den ersten 5 Minuten',
+            '<strong>Abgabe</strong> jederzeit, still',
+            'Studienkarte bei der Abgabe <strong>vorzeigen</strong>'
+        ]},
+        { code: 'en', name: 'English', items: [
+            '<strong>Duration:</strong> {dur} minutes',
+            '<strong>Do not turn over</strong> the exam before the start',
+            null,
+            'Electronic devices <strong>strictly prohibited</strong>',
+            '<strong>Read carefully</strong> and ask questions during the first 5 minutes',
+            '<strong>Paper submission</strong> anytime, in silence',
+            '<strong>Show student ID</strong> when submitting'
+        ]}
+    ];
+
+    // ═══ Timer ══════════════════════════════════════════════════════════
+    $.ready(() => {
+        const body = $('body');
+        const durationInput = $('#duration');
+        const toggleBt = $('#toggle');
+
+        let mode = 'closed';                    // exam book mode (title click toggles)
+        let total = 120 * 60;                   // seconds
+        let remaining = total;
+        let endTime = null;                     // wall-clock deadline while running
+        let timer = null;
+        let wakeLock = null;
+
+        const running = () => timer !== null;
+
+        // ── Screen wake lock while running ──
+        const lockScreen = async () => {
+            try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* unsupported */ }
+        };
+        const unlockScreen = () => {
+            wakeLock?.release();
+            wakeLock = null;
+        };
+        document.on('visibilitychange', () => {
+            if (running() && document.visibilityState === 'visible') lockScreen();
+        });
+
+        // ── Display ──
+        const render = () => {
+            // ceil so the display never shows 00h00 while time remains
+            const mins = Math.ceil(remaining / 60);
+            const h = String(Math.floor(mins / 60)).padStart(2, '0');
+            const m = String(mins % 60).padStart(2, '0');
+            $('#hours').text(h);
+            $('#minutes').text(m);
+            $('#bar').css('width', `${$.scale(remaining, 0, total, 0, 100)}%`);
+            body.cls(remaining <= 300 ? 'crit -warn' : remaining <= 600 ? 'warn -crit' : '-warn -crit');
+            document.title = `${h}h${m} — Exam Timer`;
+        };
+
+        // ── Run loop (wall-clock based: immune to tab throttling and drift) ──
+        const tick = () => {
+            remaining = Math.max(0, Math.round((endTime - Date.now()) / 1000));
+            render();
+            if (remaining <= 0) pause();
+        };
+
+        const start = () => {
+            if (remaining <= 0) return;
+            endTime = Date.now() + remaining * 1000;
+            timer = setInterval(tick, 250);
+            body.cls('running');
+            toggleBt.text('Pause');
+            lockScreen();
+        };
+
+        const pause = () => {
+            clearInterval(timer);
+            timer = null;
+            body.cls('-running');
+            toggleBt.text('Start');
+            unlockScreen();
+        };
+
+        const setDuration = () => {
+            const mins = Math.min(300, Math.max(1, Number(durationInput.val()) || 120));
+            durationInput.val(mins);
+            total = mins * 60;
+            if (!running()) {
+                remaining = total;
+                render();
+            }
+            renderInstructions();
+        };
+
+        const reset = () => {
+            pause();
+            remaining = total;
+            render();
+        };
+
+        // ── Instructions overlay ──
+        const renderInstructions = () => {
+            $('#overlay-title').text(`Consignes d'examen (livre ${mode === 'open' ? 'ouvert' : 'fermé'})`);
+            const grid = $('#langs');
+            grid.empty();
+            LANGS.forEach(lang => {
+                const card = $.create('div', { class: 'lang-card' });
+                card.add($.create('h3', { text: lang.name }));
+                const list = $.create('ul');
+                lang.items.forEach(item =>
+                    list.add($.create('li', { html: (item ?? BOOK[mode][lang.code]).replaceAll('{dur}', durationInput.val()) })));
+                card.add(list);
+                card.mount(grid);
+            });
+        };
+
+        // ── Wiring ──
+        toggleBt.on('click', () => running() ? pause() : start());
+        $('#reset').on('click', reset);
+        durationInput.on('change', setDuration);
+        $('#logo').on('click', () => {
+            renderInstructions();
+            $('#overlay').cls('-hidden');
+        });
+        $('#close').on('click', () => $('#overlay').cls('hidden'));
+        $('#overlay').on('click', e => {
+            if (e.target.id === 'overlay') $('#overlay').cls('hidden');
+        });
+        $('#overlay-title').on('click', () => {
+            mode = mode === 'open' ? 'closed' : 'open';
+            renderInstructions();
+        });
+        window.on('keydown', e => {
+            if (e.key === 'Escape') $('#overlay').cls('hidden');
+            if (e.key === ' ' && e.target.tagName !== 'INPUT') {
+                e.preventDefault();
+                running() ? pause() : start();
+            }
+        });
+
+        render();
+        renderInstructions();
+    });
+</script>
+</body>
+</html>

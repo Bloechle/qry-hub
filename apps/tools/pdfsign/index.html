@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>$ pdf.sign</title>
+    <link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        /* ═══ THEME — inline copy of /theme.css ═══════════════════════════
+           Do not edit here: edit theme.css, then re-paste this block. ═══ */
+
+        :root {
+            --bg: #F4F7FB;
+            --card: #FFFFFF;
+            --ink: #0F1722;
+            --muted: #5B6B7D;
+            --accent: #0B6BCB;
+            --accent-soft: #E3EEFA;
+            --accent-glow: rgba(11, 107, 203, .25);
+            --border: #DCE4ED;
+            --ok: #15803D;
+            --warn: #B45309;
+            --err: #C2410C;
+            --radius: 12px;
+            --ring: 0 0 0 3px var(--accent-soft);
+            --shadow-card: 0 8px 20px rgba(15, 23, 34, .05);
+            --shadow-hover: 0 10px 24px rgba(11, 107, 203, .14);
+            --ease: cubic-bezier(.2, .8, .2, 1);
+            --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+            --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        ::selection { background: var(--accent); color: #fff; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            background-image: radial-gradient(rgba(11, 107, 203, .10) 1px, transparent 1px);
+            background-size: 26px 26px;
+            color: var(--ink);
+            font: 16px/1.5 var(--sans);
+        }
+
+        /* ── Header: command prompt ──────────────────────────────────── */
+        header h1 {
+            font: 700 2.4em/1.2 var(--mono);
+            letter-spacing: -.02em;
+            margin: 0 0 6px;
+        }
+
+        header h1 .prompt { color: var(--accent); }
+
+        header h1 .caret {
+            display: inline-block;
+            width: .55em;
+            height: 1.05em;
+            margin-left: 4px;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+            vertical-align: text-bottom;
+            animation: blink 1.1s steps(1) infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            header h1 .caret { animation: none; }
+        }
+
+        header p { margin: 0; color: var(--muted); }
+
+        /* ── Panel (main card) ───────────────────────────────────────── */
+        #panel {
+            width: min(var(--panel-w, 980px), 100%);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-card);
+            padding: 20px;
+        }
+
+        /* ── Controls (select, buttons) ──────────────────────────────── */
+        select, button {
+            font: 600 .95em var(--mono);
+            color: var(--ink);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
+        }
+
+        select:hover, select:focus-visible, button:hover, button:focus-visible {
+            border-color: var(--accent);
+            box-shadow: var(--ring);
+            outline: none;
+        }
+
+        button.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        /* ── Note (caption under the content) ────────────────────────── */
+        .note {
+            margin: 36px 0 28px;
+            text-align: center;
+            font: .9em var(--mono);
+            color: var(--muted);
+        }
+
+        /* ── Metrics (stable grid, no layout shift) ──────────────────── */
+        #metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+            gap: 8px;
+        }
+
+        .metric {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 7px 10px;
+            text-align: center;
+        }
+
+        .metric .label {
+            display: block;
+            font: 600 .65em var(--mono);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--muted);
+        }
+
+        .metric .value {
+            font: 600 .95em var(--mono);
+            font-variant-numeric: tabular-nums;
+            color: var(--ink);
+            white-space: nowrap;
+        }
+
+        /* ═══ END THEME ═══════════════════════════════════════════════ */
+
+        /* ─── App: pdfsign ─────────────────────────────────────────────── */
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px;
+        }
+
+        header { text-align: center; margin-bottom: 24px; }
+
+        #panel { --panel-w: 880px; }
+
+        #toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        #toolbar .spacer { flex: 1; }
+
+        button, .btn {
+            padding: 9px 16px;
+            font: 600 .9em var(--mono);
+            color: var(--accent);
+            background: var(--accent-soft);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        button:hover, .btn:hover { filter: brightness(0.96); }
+        button.primary { color: #fff; background: var(--accent); }
+        button.primary:hover { filter: brightness(1.12); }
+        button:disabled { opacity: .4; cursor: default; }
+
+        #pageNav { display: none; align-items: center; gap: 6px; font: .85em var(--mono); color: var(--muted); }
+        #pageNav button { padding: 9px 12px; }
+
+        #stage {
+            position: relative;
+            display: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #8E9DAD;
+        }
+
+        #stage canvas { display: block; width: 100%; height: auto; }
+        #inkCanvas { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
+        #inkCanvas.placing { cursor: copy; }
+
+        #drop {
+            display: grid;
+            place-items: center;
+            min-height: 320px;
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            color: var(--muted);
+            font: .95em var(--mono);
+            text-align: center;
+            padding: 20px;
+        }
+
+        #drop.over { border-color: var(--accent); background: var(--accent-soft); }
+
+        /* ── Dialog ──────────────────────────────────────────────────── */
+        dialog {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 20px 60px rgba(27, 39, 51, .25);
+            padding: 22px;
+            width: min(380px, 92vw);
+            font: inherit;
+            color: var(--ink);
+        }
+
+        dialog::backdrop { background: rgba(27, 39, 51, .35); }
+        dialog h3 { margin: 0 0 12px; font: 700 1.05em var(--mono); color: var(--accent); }
+
+        dialog input {
+            width: 100%;
+            padding: 9px 12px;
+            font: 1em var(--mono);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+            margin-bottom: 14px;
+        }
+
+        dialog input:focus { border-color: var(--accent); box-shadow: var(--ring); }
+        dialog .actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+        #hint {
+            margin-top: 14px;
+            text-align: center;
+            font: .85em var(--mono);
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1><span class="prompt">$</span> pdf.sign<span class="caret"></span></h1>
+    <p>Sign and annotate any PDF — ink and text are embedded as vectors.</p>
+</header>
+
+<div id="panel">
+    <div id="toolbar">
+        <label class="btn">open PDF<input id="file" type="file" accept="application/pdf" hidden></label>
+        <span id="pageNav">
+            <button id="prev">‹</button>
+            <span id="pageInfo">1 / 1</span>
+            <button id="next">›</button>
+        </span>
+        <span class="spacer"></span>
+        <button id="text" disabled>text</button>
+        <button id="date" disabled>date</button>
+        <button id="undo" disabled>undo</button>
+        <button id="clear" disabled>clear page</button>
+        <button id="save" class="primary" disabled>download</button>
+    </div>
+
+    <div id="drop">drop a PDF here<br>— or use “open PDF” —<br><br>then sign with mouse, finger or pen</div>
+
+    <div id="stage">
+        <canvas id="pdfCanvas"></canvas>
+        <canvas id="inkCanvas"></canvas>
+    </div>
+
+    <div id="hint">draw anywhere on the page · “text” / “date” then click to place</div>
+</div>
+
+<dialog id="textDialog">
+    <h3>// add text</h3>
+    <input id="textInput" type="text" placeholder="text to place…">
+    <div class="actions">
+        <button id="textCancel">cancel</button>
+        <button id="textOk" class="primary">place</button>
+    </div>
+</dialog>
+
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    const SCALE = 1.5;                  // pdf.js render scale (canvas px per PDF pt)
+    const INK_W = 2.5;                  // stroke width, canvas px
+    const TEXT_PX = 16;                 // text size, canvas px
+
+    // ═══ State ═══════════════════════════════════════════════════════════
+    const app = {
+        srcBytes: null,                 // original PDF bytes
+        pdf: null,                      // pdf.js document
+        page: 1,
+        pages: 1,
+        annots: {},                     // pageNum → { strokes: [[{x,y}…]], texts: [{text,x,y}], order: ['stroke'|'text'…] }
+        pending: null                   // text waiting for a placement click
+    };
+
+    const pageAnnots = (n = app.page) =>
+        app.annots[n] ??= { strokes: [], texts: [], order: [] };
+
+    // ═══ Vector embedding (pure: PDFLib + bytes + annots in, bytes out) ══
+    async function buildSignedPdf(srcBytes, annots, scale) {
+        const { PDFDocument, StandardFonts, rgb } = PDFLib;
+        const doc = await PDFDocument.load(srcBytes, { ignoreEncryption: true });
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const black = rgb(0, 0, 0);
+
+        for (const [num, a] of Object.entries(annots)) {
+            if (!a.strokes.length && !a.texts.length) continue;
+            const page = doc.getPage(num - 1);
+            const { height } = page.getSize();
+
+            for (const stroke of a.strokes) {
+                const path = stroke
+                    .map((p, i) => `${i ? 'L' : 'M'} ${(p.x / scale).toFixed(2)} ${(p.y / scale).toFixed(2)}`)
+                    .join(' ');
+                page.drawSvgPath(path, {
+                    x: 0, y: height,                            // SVG y-down from the page top
+                    borderColor: black,
+                    borderWidth: INK_W / scale,
+                    borderLineCap: PDFLib.LineCapStyle.Round
+                });
+            }
+
+            for (const t of a.texts)
+                page.drawText(t.text, {
+                    x: t.x / scale, y: height - t.y / scale,
+                    size: TEXT_PX / scale, font, color: black
+                });
+        }
+        return doc.save();
+    }
+
+    // ═══ Rendering ═══════════════════════════════════════════════════════
+    const pdfCanvas = $('#pdfCanvas');
+    const inkCanvas = $('#inkCanvas');
+    const pdfCtx = pdfCanvas.getContext('2d');
+    const inkCtx = inkCanvas.getContext('2d');
+
+    async function renderPage(num) {
+        const page = await app.pdf.getPage(num);
+        const vp = page.getViewport({ scale: SCALE });
+        pdfCanvas.width = inkCanvas.width = vp.width;
+        pdfCanvas.height = inkCanvas.height = vp.height;
+        await page.render({ canvasContext: pdfCtx, viewport: vp }).promise;
+        redrawOverlay();
+        $('#pageInfo').text(`${app.page} / ${app.pages}`);
+        $('#prev').disabled = app.page <= 1;
+        $('#next').disabled = app.page >= app.pages;
+    }
+
+    function strokeStyle(ctx) {
+        ctx.lineCap = ctx.lineJoin = 'round';
+        ctx.lineWidth = INK_W;
+        ctx.strokeStyle = '#000';
+    }
+
+    function redrawOverlay() {
+        inkCtx.clearRect(0, 0, inkCanvas.width, inkCanvas.height);
+        const a = pageAnnots();
+        strokeStyle(inkCtx);
+        for (const stroke of a.strokes) {
+            inkCtx.beginPath();
+            stroke.forEach((p, i) => i ? inkCtx.lineTo(p.x, p.y) : inkCtx.moveTo(p.x, p.y));
+            inkCtx.stroke();
+        }
+        inkCtx.font = `${TEXT_PX}px Helvetica, Arial`;
+        inkCtx.fillStyle = '#000';
+        for (const t of a.texts) inkCtx.fillText(t.text, t.x, t.y);
+    }
+
+    // ═══ Flow ════════════════════════════════════════════════════════════
+    async function openPdf(buf) {
+        app.srcBytes = new Uint8Array(buf.slice(0));        // pdf.js may transfer the buffer
+        app.pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        app.pages = app.pdf.numPages;
+        app.page = 1;
+        app.annots = {};
+        app.pending = null;
+        $('#drop').hide();
+        $('#stage').css({ display: 'block' });
+        $('#pageNav').css({ display: app.pages > 1 ? 'inline-flex' : 'none' });
+        ['#text', '#date', '#undo', '#clear', '#save'].forEach(s => $(s).enable());
+        await renderPage(1);
+    }
+
+    function armText(text) {
+        app.pending = text;
+        inkCanvas.cls('placing');
+    }
+
+    // ═══ Input ═══════════════════════════════════════════════════════════
+    // CSS may scale the canvas: map pointer coords to canvas pixels
+    const toCanvas = (e) => {
+        const r = inkCanvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - r.left) * inkCanvas.width / r.width,
+            y: (e.clientY - r.top) * inkCanvas.height / r.height
+        };
+    };
+
+    let drawing = false;
+    let stroke = [];
+    let last = null;
+
+    inkCanvas.on('pointerdown', e => {
+        const p = toCanvas(e);
+        if (app.pending) {                                   // place pending text
+            const a = pageAnnots();
+            a.texts.push({ text: app.pending, x: p.x, y: p.y });
+            a.order.push('text');
+            app.pending = null;
+            inkCanvas.cls('-placing');
+            redrawOverlay();
+            return;
+        }
+        drawing = true;
+        stroke = [p];
+        last = p;
+        inkCanvas.setPointerCapture(e.pointerId);
+        e.preventDefault();
+    });
+
+    inkCanvas.on('pointermove', e => {
+        if (!drawing) return;
+        for (const ev of (e.getCoalescedEvents?.() ?? [e])) {
+            const p = toCanvas(ev);
+            stroke.push(p);
+            strokeStyle(inkCtx);
+            inkCtx.beginPath();
+            inkCtx.moveTo(last.x, last.y);
+            inkCtx.lineTo(p.x, p.y);
+            inkCtx.stroke();
+            last = p;
+        }
+    });
+
+    const endStroke = () => {
+        if (drawing && stroke.length > 1) {
+            const a = pageAnnots();
+            a.strokes.push(stroke);
+            a.order.push('stroke');
+        }
+        drawing = false;
+        stroke = [];
+    };
+
+    inkCanvas.on('pointerup', endStroke);
+    inkCanvas.on('pointercancel', endStroke);
+
+    // ═══ Boot ════════════════════════════════════════════════════════════
+    $.ready(() => {
+        $('#file').on('change', async e => {
+            const f = e.target.files[0];
+            if (f) openPdf(await f.arrayBuffer());
+        });
+
+        // Drag & drop
+        const drop = $('#drop');
+        document.on('dragover', e => { e.preventDefault(); drop.cls('over'); });
+        document.on('dragleave', () => drop.cls('-over'));
+        document.on('drop', async e => {
+            e.preventDefault();
+            drop.cls('-over');
+            const f = [...e.dataTransfer.files].find(f => f.type === 'application/pdf');
+            if (f) openPdf(await f.arrayBuffer());
+        });
+
+        $('#prev').on('click', async () => { if (app.page > 1) { app.page--; await renderPage(app.page); } });
+        $('#next').on('click', async () => { if (app.page < app.pages) { app.page++; await renderPage(app.page); } });
+
+        $('#text').on('click', () => { $('#textInput').val(''); $('#textDialog').showModal(); $('#textInput').focus(); });
+        $('#textOk').on('click', () => {
+            const t = $('#textInput').val().trim();
+            $('#textDialog').close();
+            if (t) armText(t);
+        });
+        $('#textCancel').on('click', () => $('#textDialog').close());
+        $('#textInput').on('keydown', e => { if (e.key === 'Enter') $('#textOk').click(); });
+
+        $('#date').on('click', () => armText(new Date().toLocaleDateString('fr-CH')));
+
+        $('#undo').on('click', () => {
+            const a = pageAnnots();
+            const kind = a.order.pop();
+            if (kind === 'stroke') a.strokes.pop();
+            else if (kind === 'text') a.texts.pop();
+            redrawOverlay();
+        });
+
+        $('#clear').on('click', () => {
+            app.annots[app.page] = { strokes: [], texts: [], order: [] };
+            redrawOverlay();
+        });
+
+        $('#save').on('click', async () => {
+            const bytes = await buildSignedPdf(app.srcBytes, app.annots, SCALE);
+            const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+            const a = $.create('a', { href: url, download: 'signed.pdf' });
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    });
+</script>
+</body>
+</html>

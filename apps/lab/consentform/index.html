@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>$ consent.form</title>
+    <link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        /* ═══ THEME — inline copy of /theme.css ═══════════════════════════
+           Do not edit here: edit theme.css, then re-paste this block. ═══ */
+
+        :root {
+            --bg: #F4F7FB;
+            --card: #FFFFFF;
+            --ink: #0F1722;
+            --muted: #5B6B7D;
+            --accent: #0B6BCB;
+            --accent-soft: #E3EEFA;
+            --accent-glow: rgba(11, 107, 203, .25);
+            --border: #DCE4ED;
+            --ok: #15803D;
+            --warn: #B45309;
+            --err: #C2410C;
+            --radius: 12px;
+            --ring: 0 0 0 3px var(--accent-soft);
+            --shadow-card: 0 8px 20px rgba(15, 23, 34, .05);
+            --shadow-hover: 0 10px 24px rgba(11, 107, 203, .14);
+            --ease: cubic-bezier(.2, .8, .2, 1);
+            --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+            --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        ::selection { background: var(--accent); color: #fff; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            background-image: radial-gradient(rgba(11, 107, 203, .10) 1px, transparent 1px);
+            background-size: 26px 26px;
+            color: var(--ink);
+            font: 16px/1.5 var(--sans);
+        }
+
+        /* ── Header: command prompt ──────────────────────────────────── */
+        header h1 {
+            font: 700 2.4em/1.2 var(--mono);
+            letter-spacing: -.02em;
+            margin: 0 0 6px;
+        }
+
+        header h1 .prompt { color: var(--accent); }
+
+        header h1 .caret {
+            display: inline-block;
+            width: .55em;
+            height: 1.05em;
+            margin-left: 4px;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+            vertical-align: text-bottom;
+            animation: blink 1.1s steps(1) infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            header h1 .caret { animation: none; }
+        }
+
+        header p { margin: 0; color: var(--muted); }
+
+        /* ── Panel (main card) ───────────────────────────────────────── */
+        #panel {
+            width: min(var(--panel-w, 980px), 100%);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-card);
+            padding: 20px;
+        }
+
+        /* ── Controls (select, buttons) ──────────────────────────────── */
+        select, button {
+            font: 600 .95em var(--mono);
+            color: var(--ink);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
+        }
+
+        select:hover, select:focus-visible, button:hover, button:focus-visible {
+            border-color: var(--accent);
+            box-shadow: var(--ring);
+            outline: none;
+        }
+
+        button.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        /* ── Note (caption under the content) ────────────────────────── */
+        .note {
+            margin: 36px 0 28px;
+            text-align: center;
+            font: .9em var(--mono);
+            color: var(--muted);
+        }
+
+        /* ── Metrics (stable grid, no layout shift) ──────────────────── */
+        #metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+            gap: 8px;
+        }
+
+        .metric {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 7px 10px;
+            text-align: center;
+        }
+
+        .metric .label {
+            display: block;
+            font: 600 .65em var(--mono);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--muted);
+        }
+
+        .metric .value {
+            font: 600 .95em var(--mono);
+            font-variant-numeric: tabular-nums;
+            color: var(--ink);
+            white-space: nowrap;
+        }
+
+        /* ═══ END THEME ═══════════════════════════════════════════════ */
+
+        /* ─── App: consentform ─────────────────────────────────────────────── */
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px;
+        }
+
+        header { text-align: center; margin-bottom: 24px; }
+
+        #panel { --panel-w: 880px; }
+
+        #fields {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 640px) { #fields { grid-template-columns: 1fr; } }
+
+        label {
+            display: block;
+            font: 600 .8em var(--mono);
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            padding: 9px 12px;
+            font: 1em var(--mono);
+            color: var(--ink);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--accent); box-shadow: var(--ring); }
+
+        /* ── Document sheet ──────────────────────────────────────────── */
+        #sheet {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px clamp(20px, 6%, 56px);
+            font: 15px/1.55 Georgia, 'Times New Roman', serif;
+            margin-bottom: 16px;
+        }
+
+        #sheet h2 { margin: 0; text-align: center; font-size: 1.35em; }
+        #sheet .lab { text-align: center; margin: 6px 0 18px; color: #444; }
+        #sheet h3 { text-align: center; font-size: 1.15em; margin: 0 0 22px; }
+        #sheet p { margin: 0 0 13px; text-align: justify; }
+        #sheet .blank { border-bottom: 1px solid #999; padding: 0 6px; font-style: italic; }
+        #sheet .contact { margin-top: 20px; }
+        #sheet .contact p { margin: 0; }
+
+        #meta { display: flex; gap: 60px; margin: 26px 0 10px; }
+
+        #sigs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 18px;
+        }
+
+        @media (max-width: 560px) { #sigs { grid-template-columns: 1fr; } }
+
+        .pad-wrap { text-align: center; }
+
+        .pad {
+            position: relative;
+            border: 1px dashed #B7C4D2;
+            border-radius: 8px;
+        }
+
+        .pad canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .pad .wipe {
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            border: none;
+            background: none;
+            color: var(--muted);
+            font: 700 .9em var(--mono);
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        .pad .wipe:hover { color: var(--accent); }
+        .pad-wrap .sig-label { font: .8em var(--mono); color: var(--muted); margin-top: 6px; }
+
+        /* ── Actions ─────────────────────────────────────────────────── */
+        #actions { display: flex; gap: 10px; }
+
+        #actions button {
+            padding: 11px 24px;
+            font: 600 .95em var(--mono);
+            color: #fff;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #actions button:hover { filter: brightness(1.12); }
+    </style>
+</head>
+<body>
+<header>
+    <h1><span class="prompt">$</span> consent.form<span class="caret"></span></h1>
+    <p>Formulaire de consentement CoPe Lab — signé et exporté en PDF vectoriel.</p>
+</header>
+
+<div id="panel">
+    <div id="fields">
+        <div>
+            <label for="pname">participant·e</label>
+            <input id="pname" type="text" placeholder="Prénom Nom">
+        </div>
+        <div>
+            <label for="pplace">lieu</label>
+            <input id="pplace" type="text" value="Fribourg">
+        </div>
+        <div>
+            <label for="pdate">date</label>
+            <input id="pdate" type="date">
+        </div>
+    </div>
+
+    <div id="sheet">
+        <h2>Participation à une étude de recherche</h2>
+        <p class="lab">CoPe Lab — Control and Perception Laboratory, Fribourg</p>
+        <h3>Formulaire de Consentement</h3>
+        <div id="body"></div>
+        <div class="contact">
+            <p><b>Responsable principal de l'étude</b></p>
+            <p>Jean-Luc Bloechle, PhD</p>
+            <p>Université de Fribourg</p>
+            <p>jean-luc.bloechle@unifr.ch</p>
+        </div>
+        <div id="meta">
+            <span>Date&nbsp;: <span class="blank" id="pv-date">&nbsp;…&nbsp;</span></span>
+            <span>Lieu&nbsp;: <span class="blank" id="pv-place">&nbsp;…&nbsp;</span></span>
+        </div>
+        <div id="sigs">
+            <div class="pad-wrap">
+                <div class="pad">
+                    <canvas id="sigResp" width="400" height="150"></canvas>
+                    <button class="wipe" data-pad="sigResp" title="effacer">×</button>
+                </div>
+                <div class="sig-label">Signature du responsable</div>
+            </div>
+            <div class="pad-wrap">
+                <div class="pad">
+                    <canvas id="sigPart" width="400" height="150"></canvas>
+                    <button class="wipe" data-pad="sigPart" title="effacer">×</button>
+                </div>
+                <div class="sig-label">Signature du participant</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="actions">
+        <button id="download">télécharger le PDF</button>
+    </div>
+</div>
+
+<script>
+    // ═══ Consent text (single source for screen and PDF) ═════════════════
+    const BLANK = '________________________';
+    const paragraphs = (name) => [
+        `Je, soussigné(e) ${name || BLANK}, déclare accepter, librement, et de façon éclairée, de participer comme sujet à cette étude de recherche.`,
+        `Je comprends que j'ai le choix de me retirer de l'étude à n'importe quel moment et ceci sans aucune justification ni conséquence, mais ceci au plus tard jusqu'à deux semaines après la date de ma dernière expérience.`,
+        `Je confirme que la nature de cette étude m'a été clairement expliquée et que j'ai eu l'opportunité de poser toutes les questions que je souhaitais.`,
+        `Je comprends et j'accepte que toutes les données personnelles provenant de cette étude seront traitées et utilisées de manière complètement confidentielle et anonyme, comme l'adresse de courriel, l'âge, le genre, ainsi que les divers paramètres et variables enregistrés lors de l'étude.`,
+        `Je comprends que je suis libre de contacter à ma guise l'équipe de recherche afin d'obtenir des informations complémentaires relatives à cette étude.`
+    ];
+
+    const frDate = (iso) => iso ? iso.split('-').reverse().join('.') : BLANK;
+
+    // ═══ PDF (pure, testable) ════════════════════════════════════════════
+    const MM = 2.83465;
+    const PAD = { w: 400, h: 150 };                          // signature pad canvas size
+
+    function wrap(font, text, size, maxW) {
+        const lines = [];
+        let line = '';
+        for (const word of text.split(' ')) {
+            const probe = line ? `${line} ${word}` : word;
+            if (font.widthOfTextAtSize(probe, size) > maxW && line) {
+                lines.push(line);
+                line = word;
+            } else line = probe;
+        }
+        if (line) lines.push(line);
+        return lines;
+    }
+
+    async function buildConsentPdf({ name, place, date, sigResp, sigPart }) {
+        const { PDFDocument, StandardFonts, rgb } = PDFLib;
+        const doc = await PDFDocument.create();
+        const page = doc.addPage([210 * MM, 297 * MM]);
+        const font = await doc.embedFont(StandardFonts.TimesRoman);
+        const bold = await doc.embedFont(StandardFonts.TimesRomanBold);
+        const { width: W, height: H } = page.getSize();
+        const black = rgb(0, 0, 0);
+        const margin = 22 * MM;
+        const maxW = W - 2 * margin;
+
+        const center = (text, fnt, size, y) =>
+            page.drawText(text, { x: (W - fnt.widthOfTextAtSize(text, size)) / 2, y, size, font: fnt, color: black });
+
+        let y = H - 28 * MM;
+        center('Participation à une étude de recherche', bold, 16, y);
+        y -= 7 * MM;
+        center('CoPe Lab — Control and Perception Laboratory, Fribourg', font, 11, y);
+        y -= 11 * MM;
+        center('Formulaire de Consentement', bold, 14, y);
+        y -= 12 * MM;
+
+        const size = 11, lineH = size * 1.45;
+        for (const para of paragraphs(name)) {
+            for (const line of wrap(font, para, size, maxW)) {
+                page.drawText(line, { x: margin, y, size, font, color: black });
+                y -= lineH;
+            }
+            y -= lineH * 0.6;                                // paragraph gap
+        }
+
+        // Contact block
+        y -= lineH * 0.4;
+        page.drawText(`Responsable principal de l'étude`, { x: margin, y, size, font: bold, color: black });
+        for (const line of ['Jean-Luc Bloechle, PhD', 'Université de Fribourg', 'jean-luc.bloechle@unifr.ch']) {
+            y -= lineH;
+            page.drawText(line, { x: margin, y, size, font, color: black });
+        }
+
+        // Date / Lieu
+        y -= lineH * 2.2;
+        page.drawText(`Date : ${frDate(date)}`, { x: margin, y, size, font, color: black });
+        page.drawText(`Lieu : ${place || BLANK}`, { x: margin + 80 * MM, y, size, font, color: black });
+
+        // Signatures: pad strokes scaled into two boxes above their labels
+        const boxW = 70 * MM, boxH = boxW * PAD.h / PAD.w;
+        const labelY = y - lineH - boxH - 4 * MM;
+        const slots = [
+            { sig: sigResp, x: margin, label: 'Signature du responsable' },
+            { sig: sigPart, x: W - margin - boxW, label: 'Signature du participant' }
+        ];
+        for (const { sig, x, label } of slots) {
+            for (const stroke of sig ?? []) {
+                const path = stroke
+                    .map((p, i) => `${i ? 'L' : 'M'} ${(p.x * boxW / PAD.w).toFixed(2)} ${(p.y * boxH / PAD.h).toFixed(2)}`)
+                    .join(' ');
+                page.drawSvgPath(path, {
+                    x, y: labelY + 4 * MM + boxH,
+                    borderColor: black, borderWidth: 1.1,
+                    borderLineCap: PDFLib.LineCapStyle.Round
+                });
+            }
+            page.drawLine({
+                start: { x, y: labelY + 3 * MM }, end: { x: x + boxW, y: labelY + 3 * MM },
+                color: rgb(0.45, 0.45, 0.45), thickness: 0.6
+            });
+            page.drawText(label, { x, y: labelY - 1 * MM, size: 10, font, color: black });
+        }
+
+        return doc.save();
+    }
+
+    // ═══ Signature pads ══════════════════════════════════════════════════
+    function makePad(canvas) {
+        const ctx = canvas.getContext('2d');
+        const strokes = [];
+        let drawing = false, stroke = [], last = null;
+
+        ctx.lineCap = ctx.lineJoin = 'round';
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = '#1B2733';
+
+        const pos = (e) => {
+            const r = canvas.getBoundingClientRect();
+            return { x: (e.clientX - r.left) * PAD.w / r.width, y: (e.clientY - r.top) * PAD.h / r.height };
+        };
+
+        canvas.on('pointerdown', e => {
+            drawing = true;
+            last = pos(e);
+            stroke = [last];
+            canvas.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+        canvas.on('pointermove', e => {
+            if (!drawing) return;
+            for (const ev of (e.getCoalescedEvents?.() ?? [e])) {
+                const p = pos(ev);
+                stroke.push(p);
+                ctx.beginPath();
+                ctx.moveTo(last.x, last.y);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+                last = p;
+            }
+        });
+        const end = () => {
+            if (drawing && stroke.length > 1) strokes.push(stroke);
+            drawing = false;
+        };
+        canvas.on('pointerup', end);
+        canvas.on('pointercancel', end);
+
+        return {
+            strokes,
+            clear() { strokes.length = 0; ctx.clearRect(0, 0, PAD.w, PAD.h); }
+        };
+    }
+
+    // ═══ UI ══════════════════════════════════════════════════════════════
+    $.ready(() => {
+        $('#pdate').val(new Date().toISOString().split('T')[0]);
+
+        // Live sheet preview
+        const refresh = () => {
+            $('#body').html(paragraphs($('#pname').val().trim())
+                .map(p => `<p>${p}</p>`).join(''));
+            $('#pv-date').text(frDate($('#pdate').val()));
+            $('#pv-place').text($('#pplace').val().trim() || '…');
+        };
+        ['#pname', '#pplace', '#pdate'].forEach(s => $(s).on('input', refresh));
+        refresh();
+
+        const pads = { sigResp: makePad($('#sigResp')), sigPart: makePad($('#sigPart')) };
+        $.all('.wipe').forEach(b => b.on('click', () => pads[b.data('pad')].clear()));
+
+        $('#download').on('click', async () => {
+            const bytes = await buildConsentPdf({
+                name: $('#pname').val().trim(),
+                place: $('#pplace').val().trim(),
+                date: $('#pdate').val(),
+                sigResp: pads.sigResp.strokes,
+                sigPart: pads.sigPart.strokes
+            });
+            const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+            const a = $.create('a', { href: url, download: 'formulaire-consentement.pdf' });
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    });
+</script>
+</body>
+</html>

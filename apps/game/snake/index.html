@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <title>$ snake.run</title>
+    <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry.js"></script>
+    <style>
+        /* ─── Identity: green phosphor CRT ────────────────────────────── */
+        :root {
+            --bg: #030A05;
+            --ph: #58FF85;                  /* phosphor */
+            --ph-bright: #B8FFD0;
+            --ph-dim: rgba(88, 255, 133, .28);
+            --ph-glow: rgba(88, 255, 133, .14);
+            --amber: #FFB23E;
+            --red: #FF5C38;                 /* food / danger */
+            --ice: #BFEFFF;
+            --gold: #FFD24A;
+            --ink: #CFEFD8;
+            --muted: #5E8F6E;
+            --crt: 'VT323', 'JetBrains Mono', ui-monospace, monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--ink);
+            font: 19px/1.4 var(--crt);
+            letter-spacing: .03em;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ── CRT layers (scanlines + vignette + slow breathing) ─────── */
+        #crt {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 50;
+            background:
+                    radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, .45) 100%),
+                    repeating-linear-gradient(0deg, rgba(0, 0, 0, .16) 0 1px, transparent 1px 3px);
+            animation: breathe 5s ease-in-out infinite;
+        }
+
+        @keyframes breathe { 50% { opacity: .88; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            #crt { animation: none; }
+            #scr-start h1 .cursor { animation: none; }
+        }
+
+        /* ── HUD: terminal status line ───────────────────────────────── */
+        #hud {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px 26px;
+            width: 100%;
+            padding: 10px 14px 6px;
+            font-size: 1.15em;
+            color: var(--muted);
+            text-shadow: 0 0 8px var(--ph-glow);
+        }
+
+        #hud b { font-weight: 400; color: var(--ph); }
+        #hud i { font-style: normal; color: var(--muted); }
+        #h-fx { display: none; }
+        #h-fx.star { display: inline; } #h-fx.star b { color: var(--gold); }
+        #h-fx.freeze { display: inline; } #h-fx.freeze b { color: var(--ice); }
+
+        /* ── Board: fills the viewport ───────────────────────────────── */
+        #wrap {
+            position: relative;
+            margin: 4px 0 8px;
+            border: 1px solid var(--ph-dim);
+            border-radius: 6px;
+            box-shadow: 0 0 60px var(--ph-glow), inset 0 0 60px rgba(0, 0, 0, .55);
+            transition: border-color .3s ease, box-shadow .3s ease;
+        }
+
+        #wrap.fx-freeze { border-color: rgba(191, 239, 255, .55); box-shadow: 0 0 60px rgba(191, 239, 255, .14), inset 0 0 60px rgba(0, 0, 0, .55); }
+        #wrap.fx-star   { border-color: rgba(255, 210, 74, .55);  box-shadow: 0 0 60px rgba(255, 210, 74, .14),  inset 0 0 60px rgba(0, 0, 0, .55); }
+
+        #board {
+            display: block;
+            aspect-ratio: 1;
+            height: min(calc(100dvh - 78px), calc(100vw - 16px));
+            width: auto;
+        }
+
+        #toast {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-6px);
+            padding: 3px 16px;
+            background: rgba(3, 10, 5, .9);
+            border: 1px solid var(--ph-dim);
+            border-radius: 4px;
+            color: var(--ph);
+            font-size: 1.1em;
+            text-shadow: 0 0 10px var(--ph-glow);
+            opacity: 0;
+            transition: opacity .25s ease, transform .25s ease;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ── Overlays: terminal readouts ─────────────────────────────── */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            background: rgba(3, 10, 5, .72);
+            backdrop-filter: blur(2px);
+        }
+
+        .card {
+            max-width: min(430px, 90%);
+            padding: 22px 28px;
+            text-align: center;
+            background: rgba(4, 14, 7, .94);
+            border: 1px solid var(--ph-dim);
+            border-radius: 8px;
+            box-shadow: 0 0 80px var(--ph-glow);
+        }
+
+        .card h1 {
+            margin-bottom: 4px;
+            font-size: 2.1em;
+            font-weight: 400;
+            color: var(--ph);
+            text-shadow: 0 0 16px var(--ph-dim);
+        }
+
+        .card h1 .prompt { color: var(--muted); }
+
+        .card h1 .cursor {
+            display: inline-block;
+            animation: blink 1.1s steps(1) infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .card .sub { color: var(--muted); margin-bottom: 14px; }
+
+        .legend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px 18px;
+            margin-bottom: 14px;
+            padding: 11px 16px;
+            text-align: left;
+            font-size: .95em;
+            color: var(--muted);
+            background: rgba(0, 0, 0, .4);
+            border: 1px dashed rgba(88, 255, 133, .15);
+            border-radius: 6px;
+        }
+
+        .legend .glyph {
+            display: inline-block;
+            width: 1.6em;
+            margin-right: 6px;
+            font: .72em 'Press Start 2P', 'VT323', monospace;
+            line-height: 1;
+            vertical-align: -.05em;
+            text-shadow: 0 0 7px currentColor;
+        }
+
+        .keys { margin-bottom: 14px; font-size: .92em; color: var(--muted); line-height: 1.9; }
+
+        kbd {
+            display: inline-block;
+            min-width: 20px;
+            padding: 0 6px;
+            text-align: center;
+            color: var(--ph);
+            background: rgba(88, 255, 133, .08);
+            border: 1px solid var(--ph-dim);
+            border-radius: 4px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .stat {
+            padding: 8px 6px;
+            background: rgba(0, 0, 0, .4);
+            border: 1px solid var(--ph-dim);
+            border-radius: 6px;
+        }
+
+        .stat .label { display: block; font-size: .85em; color: var(--muted); }
+        .stat .value { font-size: 1.5em; color: var(--ph); text-shadow: 0 0 10px var(--ph-glow); }
+
+        .card button {
+            padding: 8px 34px;
+            font: 1.25em var(--crt);
+            letter-spacing: .06em;
+            color: var(--ph);
+            background: transparent;
+            border: 1px solid var(--ph);
+            border-radius: 6px;
+            cursor: pointer;
+            text-shadow: 0 0 10px var(--ph-glow);
+            box-shadow: 0 0 18px var(--ph-glow), inset 0 0 18px rgba(88, 255, 133, .06);
+            transition: background .15s ease, color .15s ease;
+        }
+
+        .card button:hover { background: var(--ph); color: #03140A; text-shadow: none; }
+        .card .hint { margin-top: 10px; font-size: .85em; color: var(--muted); }
+
+        /* ── Touch d-pad (overlaid, coarse pointers only) ────────────── */
+        #touch {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            grid-template-areas: '. up .' 'left down right';
+            gap: 9px;
+            z-index: 60;
+        }
+
+        @media (pointer: coarse) { #touch { display: grid; } }
+
+        #touch button {
+            width: 56px;
+            height: 56px;
+            font: 1.4em var(--crt);
+            color: var(--ph);
+            background: rgba(88, 255, 133, .08);
+            border: 1px solid var(--ph-dim);
+            border-radius: 50%;
+            touch-action: manipulation;
+        }
+
+        #touch button:active { background: rgba(88, 255, 133, .28); }
+        #t-up { grid-area: up; } #t-down { grid-area: down; }
+        #t-left { grid-area: left; } #t-right { grid-area: right; }
+    </style>
+</head>
+<body>
+<div id="hud">
+    <span>score <b id="h-sc">0</b></span>
+    <span>lvl <b id="h-lv">1</b> <i id="h-name"></i> <i id="h-prog"></i></span>
+    <span id="h-fx"><b></b></span>
+    <span>best <b id="h-best">0</b></span>
+</div>
+
+<div id="wrap">
+    <canvas id="board"></canvas>
+    <div id="toast"></div>
+
+    <div id="scr-start" class="overlay">
+        <div class="card">
+            <h1><span class="prompt">&gt;</span> snake.run<span class="cursor">_</span></h1>
+            <p class="sub">8 levels on a phosphor screen — walls, wraps, power-ups.</p>
+            <div class="legend">
+                <span><b class="glyph" style="color:var(--red)">@</b>food +10</span>
+                <span><b class="glyph" style="color:var(--gold)">$</b>bonus +30</span>
+                <span><b class="glyph" style="color:var(--ice)">*</b>freeze: slow</span>
+                <span><b class="glyph" style="color:#fff">#</b>boost: ×2</span>
+            </div>
+            <div class="keys">
+                <kbd>←↑↓→</kbd> / <kbd>WASD</kbd> steer · chain food for combos<br>
+                <kbd>P</kbd> pause · <kbd>M</kbd> mute · <kbd>F</kbd> fullscreen · swipe on touch
+            </div>
+            <button id="startBtn">start</button>
+            <p class="hint"><kbd>Space</kbd> to start</p>
+        </div>
+    </div>
+
+    <div id="scr-pause" class="overlay" style="display:none">
+        <div class="card">
+            <h1>// paused</h1>
+            <p class="sub">Press <kbd>P</kbd> or tap to resume.</p>
+        </div>
+    </div>
+
+    <div id="scr-over" class="overlay" style="display:none">
+        <div class="card">
+            <h1 id="o-title">// game over</h1>
+            <div class="stats">
+                <div class="stat"><span class="label">score</span><span class="value" id="o-sc">0</span></div>
+                <div class="stat"><span class="label">level</span><span class="value" id="o-lv">1</span></div>
+                <div class="stat"><span class="label">best</span><span class="value" id="o-best">0</span></div>
+            </div>
+            <button id="retryBtn">run again</button>
+            <p class="hint"><kbd>Space</kbd> to restart</p>
+        </div>
+    </div>
+</div>
+
+<div id="touch">
+    <button id="t-up" aria-label="up">▲</button>
+    <button id="t-left" aria-label="left">◀</button>
+    <button id="t-down" aria-label="down">▼</button>
+    <button id="t-right" aria-label="right">▶</button>
+</div>
+
+<div id="crt"></div>
+
+<script>
+    // ═══ Config ══════════════════════════════════════════════════════════
+    const CFG = {
+        n: 21,                          // grid cells per side
+        cell: 26,                       // logical px per cell
+        startLen: 3,
+        comboWindow: 3500,              // ms between eats to keep the chain
+        foodPts: 10,
+        bonusPts: 30,
+        pickupChance: 0.28,             // per food eaten, if none on board
+        pickupTtl: 8000,                // pickup lifetime (blinks near the end)
+        blinkAt: 2200,
+        freezeMs: 5000,                 // slow-motion duration
+        starMs: 6000,                   // ×2 duration
+        touchSlow: 1.12,                // gentler pace on touch devices
+        levelHold: 900                  // pause between levels (ms)
+    };
+
+    // Phosphor palette (canvas side)
+    const PAL = {
+        bg: '#030A05',
+        grid: 'rgba(88, 255, 133, .07)',
+        wallFill: 'rgba(255, 92, 56, .18)',
+        wallEdge: 'rgba(255, 92, 56, .75)',
+        food: '#FF5C38',
+        foodFloat: '#FFB23E',
+        head: '#B8FFD0',
+        eyes: '#03140A',
+        glow: '#58FF85'
+    };
+
+    // Items as 'Press Start 2P' glyphs — chunky 8-bit sprites, ASCII/Latin-1
+    // only so no system-font fallback. sc = per-glyph size, dy = optical center.
+    const GLYPH_FONT = "'Press Start 2P', 'VT323', monospace";
+    const GLYPHS = {
+        food:   { ch: '@', sc: 0.72, dy: 0.04 },
+        bonus:  { ch: '$', sc: 0.74, dy: 0.02 },
+        freeze: { ch: '*', sc: 0.92, dy: 0.14 },
+        star:   { ch: '#', sc: 0.82, dy: 0.04 }
+    };
+
+    // Wall helpers → arrays of [x, y]
+    const hw = (x1, x2, y) => Array.from({ length: x2 - x1 + 1 }, (_, i) => [x1 + i, y]);
+    const vw = (y1, y2, x) => Array.from({ length: y2 - y1 + 1 }, (_, i) => [x, y1 + i]);
+
+    // The spawn lane (y = 10, x ≤ 7) stays clear in every layout.
+    const LEVELS = [
+        { name: 'Open Field', speed: 150, goal: 6, walls: [] },
+        { name: 'Hurdles', speed: 140, goal: 7,
+            walls: [...hw(4, 8, 5), ...hw(12, 16, 5), ...hw(4, 8, 15), ...hw(12, 16, 15)] },
+        { name: 'Corridors', speed: 130, goal: 7,
+            walls: [...vw(3, 8, 5), ...vw(12, 17, 5), ...vw(3, 8, 10), ...vw(12, 17, 10), ...vw(3, 8, 15), ...vw(12, 17, 15)] },
+        { name: 'The Cross', speed: 120, goal: 8,
+            walls: [...vw(2, 7, 10), ...vw(13, 18, 10), ...hw(13, 18, 10)] },
+        { name: 'Portal Zone', speed: 115, goal: 8, wrap: true, walls: [] },
+        { name: 'Chambers', speed: 105, goal: 9,
+            walls: [...hw(3, 7, 4), ...vw(4, 8, 3), ...hw(13, 17, 4), ...vw(4, 8, 17),
+                ...hw(3, 7, 16), ...vw(12, 16, 3), ...hw(13, 17, 16), ...vw(12, 16, 17)] },
+        { name: 'Spiral', speed: 95, goal: 10,
+            walls: [...hw(3, 15, 3), ...vw(3, 13, 17), ...hw(7, 17, 17), ...vw(7, 13, 11)] },
+        { name: 'Gauntlet', speed: 85, goal: 12, wrap: true,
+            walls: [[4, 4], [5, 4], [15, 4], [16, 4], [9, 7], [10, 7], [4, 13], [5, 13],
+                [15, 13], [16, 13], [9, 16], [10, 16], [13, 8], [7, 12]] }
+    ];
+
+    const PICKUPS = {
+        bonus:  { color: '#FFD24A' },
+        freeze: { color: '#BFEFFF' },
+        star:   { color: '#FFFFFF' }
+    };
+
+    // ═══ Audio (tiny WebAudio synth, no assets) ══════════════════════════
+    const SFX = (() => {
+        let ctx = null, muted = false;
+        const init = () => { if (!ctx && window.AudioContext) ctx = new AudioContext(); ctx?.resume(); };
+        const beep = (f0, f1, dur, type = 'square', vol = 0.1) => {
+            if (muted || !ctx) return;
+            const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
+            o.type = type;
+            o.frequency.setValueAtTime(f0, t);
+            o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+            g.gain.setValueAtTime(vol, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+            o.connect(g).connect(ctx.destination);
+            o.start(t);
+            o.stop(t + dur);
+        };
+        return {
+            init,
+            toggle: () => muted = !muted,
+            eat:    () => beep(660, 990, 0.08, 'triangle', 0.12),
+            combo:  (n) => beep(660 + n * 110, 990 + n * 110, 0.09, 'triangle', 0.13),
+            pickup: () => beep(520, 1300, 0.16, 'sine', 0.14),
+            level:  () => { beep(440, 880, 0.12); setTimeout(() => beep(660, 1320, 0.14), 110); },
+            crash:  () => beep(220, 40, 0.4, 'sawtooth', 0.18)
+        };
+    })();
+
+    // ═══ State ═══════════════════════════════════════════════════════════
+    const game = {
+        mode: 'menu',                   // menu | playing | dying | over | paused
+        level: 0,
+        score: 0,
+        best: 0,
+        eaten: 0,                       // food eaten in the current level
+        snake: [],                      // [{x,y}], head first
+        prevTail: null,                 // cell the tail just left (render glide)
+        moved: false,                   // at least one step since level load
+        dir: { x: 1, y: 0 },
+        queue: [],                      // buffered direction changes (max 2)
+        grow: 0,
+        food: null,
+        pickup: null,                   // { type, x, y, until }
+        fx: { slow: 0, x2: 0 },         // effect end timestamps
+        combo: 0,
+        comboAt: 0,
+        acc: 0,
+        hold: 0,                        // level-transition pause
+        dieT: 0,
+        time: 0
+    };
+
+    try { game.best = parseInt(localStorage.getItem('snakeBest')) || 0; } catch {}
+
+    const def = () => LEVELS[Math.min(game.level, LEVELS.length - 1)];
+    const isTouch = matchMedia('(pointer: coarse)').matches;
+    let walls = new Set();              // 'x,y' keys for O(1) lookups
+    const key = (x, y) => `${x},${y}`;
+
+    // Tick interval: level pace, speeding up within the level, freeze slows it
+    const interval = () => {
+        let s = def().speed * (isTouch ? CFG.touchSlow : 1);
+        s *= 1 - 0.08 * Math.min(1, game.eaten / def().goal);
+        if (game.fx.slow > game.time) s *= 1.6;
+        return s;
+    };
+
+    // ═══ Fullscreen (opt-in via F — the layout already fills the viewport) ═
+    function toggleFullscreen() {
+        document.fullscreenElement
+            ? document.exitFullscreen?.()
+            : document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+
+    // Preload the canvas fonts so items don't pop in with a fallback
+    document.fonts?.load('26px VT323');
+    document.fonts?.load("20px 'Press Start 2P'");
+
+    // ═══ Canvas ══════════════════════════════════════════════════════════
+    const SIZE = CFG.n * CFG.cell;
+    const board = $('#board');
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    board.attr({ width: SIZE * dpr, height: SIZE * dpr });
+    const ctx = board.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const px = (c) => c * CFG.cell;
+    const C = CFG.cell;
+
+    function rr(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+    }
+
+    function drawGrid() {
+        ctx.fillStyle = PAL.bg;
+        ctx.fillRect(0, 0, SIZE, SIZE);
+        ctx.strokeStyle = PAL.grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 1; i < CFG.n; i++) {
+            ctx.moveTo(px(i) + .5, 0); ctx.lineTo(px(i) + .5, SIZE);
+            ctx.moveTo(0, px(i) + .5); ctx.lineTo(SIZE, px(i) + .5);
+        }
+        ctx.stroke();
+    }
+
+    function drawWalls() {
+        ctx.fillStyle = PAL.wallFill;
+        ctx.strokeStyle = PAL.wallEdge;
+        ctx.lineWidth = 1.2;
+        for (const k of walls) {
+            const [x, y] = k.split(',').map(Number);
+            rr(px(x) + 1.5, px(y) + 1.5, C - 3, C - 3, 3);
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+
+    function glyph(type, cellX, cellY, color, scale = 1) {
+        const g = GLYPHS[type];
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = color;
+        ctx.font = `${C * g.sc * scale}px ${GLYPH_FONT}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(g.ch, px(cellX) + C / 2, px(cellY) + C / 2 + C * g.dy);
+        ctx.restore();
+    }
+
+    function drawFood() {
+        if (!game.food) return;
+        const pulse = 1 + Math.sin(game.time / 180) * 0.08;
+        glyph('food', game.food.x, game.food.y, PAL.food, pulse);
+    }
+
+    function drawPickup() {
+        const p = game.pickup;
+        if (!p) return;
+        const left = p.until - game.time;
+        if (left < CFG.blinkAt && Math.floor(game.time / 130) % 2) return;   // blink near expiry
+        glyph(p.type, p.x, p.y, PICKUPS[p.type].color);
+    }
+
+    // Fractional-cell block (the snake is rendered between grid positions)
+    function block(fx, fy, fill, r, glow) {
+        ctx.save();
+        if (glow) { ctx.shadowColor = PAL.glow; ctx.shadowBlur = 14; }
+        ctx.fillStyle = fill;
+        rr(px(fx) + 1.5, px(fy) + 1.5, C - 3, C - 3, r);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Lerp a → b in cell space; wrap-aware (±1 cell max per tick). Returns the
+    // position, twice when straddling an edge so both sides show the block.
+    const wrapD = (d) => d > 1 ? d - CFG.n : d < -1 ? d + CFG.n : d;
+
+    function lerpPos(a, b, t) {
+        const fx = a.x + wrapD(b.x - a.x) * t;
+        const fy = a.y + wrapD(b.y - a.y) * t;
+        const out = [[fx, fy]];
+        if (fx < 0) out.push([fx + CFG.n, fy]);
+        else if (fx > CFG.n - 1) out.push([fx - CFG.n, fy]);
+        if (fy < 0) out.push([fx, fy + CFG.n]);
+        else if (fy > CFG.n - 1) out.push([fx, fy - CFG.n]);
+        return out;
+    }
+
+    function drawSnake(t) {
+        const segs = game.snake;
+        const n = segs.length;
+        // Full path = current cells + the cell the tail just left. Each segment
+        // glides from path[j+1] toward path[j]; at t=1 this lands exactly on the
+        // next tick's t=0, so motion is seamless. Always n blocks on screen.
+        const path = game.prevTail ? [...segs, game.prevTail] : segs;
+        const grad = (j) => {
+            const k = n > 1 ? j / (n - 1) : 0;
+            return `rgba(${Math.round(88 - k * 58)}, ${Math.round(255 - k * 125)}, ${Math.round(133 - k * 70)}, ${1 - k * 0.25})`;
+        };
+
+        for (let j = n - 1; j >= 0; j--) {                                   // tail → head, head paints on top
+            const from = path[j + 1] ?? path[j];                             // no prevTail → tail holds (growth)
+            for (const [fx, fy] of lerpPos(from, path[j], t)) {
+                if (j > 0) { block(fx, fy, grad(j), 5); continue; }
+                block(fx, fy, PAL.head, 7, true);
+                const { x: dx, y: dy } = game.dir;                           // eyes along for the ride
+                const cx = px(fx) + C / 2, cy = px(fy) + C / 2;
+                ctx.fillStyle = PAL.eyes;
+                for (const side of [-1, 1]) {
+                    ctx.beginPath();
+                    ctx.arc(cx + dx * 5 + dy * side * 4.5, cy + dy * 5 + dx * side * 4.5, 2.2, 0, 7);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
+    // ═══ Particles (squares + floating score text) ═══════════════════════
+    const parts = [];
+
+    function burst(cx, cy, color, n) {
+        for (let i = 0; i < n; i++) parts.push({
+            x: cx, y: cy, life: 1, color,
+            vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160 - 40
+        });
+    }
+
+    const floatText = (cx, cy, text, color) =>
+        parts.push({ x: cx, y: cy, life: 1.2, color, text, vx: 0, vy: -34 });
+
+    function drawParts(dt) {
+        for (let i = parts.length - 1; i >= 0; i--) {
+            const p = parts[i];
+            p.life -= dt * (p.text ? 0.9 : 1.8);
+            if (p.life <= 0) { parts.splice(i, 1); continue; }
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            if (!p.text) p.vy += 240 * dt;
+            ctx.globalAlpha = Math.min(1, p.life);
+            if (p.text) {
+                ctx.fillStyle = p.color;
+                ctx.font = `${C * 0.78}px VT323, monospace`;
+                ctx.textAlign = 'center';
+                ctx.fillText(p.text, p.x, p.y);
+            } else {
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+            }
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    // ═══ Spawning ════════════════════════════════════════════════════════
+    function freeCell() {
+        while (true) {
+            const x = Math.floor(Math.random() * CFG.n);
+            const y = Math.floor(Math.random() * CFG.n);
+            if (walls.has(key(x, y))) continue;
+            if (game.snake.some(s => s.x === x && s.y === y)) continue;
+            if (game.food && game.food.x === x && game.food.y === y) continue;
+            if (game.pickup && game.pickup.x === x && game.pickup.y === y) continue;
+            return { x, y };
+        }
+    }
+
+    const spawnFood = () => game.food = freeCell();
+
+    function maybeSpawnPickup() {
+        if (game.pickup || Math.random() > CFG.pickupChance) return;
+        const types = Object.keys(PICKUPS);
+        game.pickup = {
+            type: types[Math.floor(Math.random() * types.length)],
+            ...freeCell(),
+            until: game.time + CFG.pickupTtl
+        };
+    }
+
+    // ═══ Game logic ══════════════════════════════════════════════════════
+    function loadLevel() {
+        walls = new Set(def().walls.map(([x, y]) => key(x, y)));
+        game.snake = Array.from({ length: CFG.startLen }, (_, i) => ({ x: 6 - i, y: 10 }));
+        game.prevTail = null;
+        game.moved = false;
+        game.dir = { x: 1, y: 0 };
+        game.queue = [];
+        game.grow = 0;
+        game.eaten = 0;
+        game.pickup = null;
+        game.acc = 0;
+        spawnFood();
+    }
+
+    function step() {
+        if (game.queue.length) game.dir = game.queue.shift();
+        const head = { x: game.snake[0].x + game.dir.x, y: game.snake[0].y + game.dir.y };
+
+        if (def().wrap) {
+            head.x = (head.x + CFG.n) % CFG.n;
+            head.y = (head.y + CFG.n) % CFG.n;
+        } else if (head.x < 0 || head.x >= CFG.n || head.y < 0 || head.y >= CFG.n) return die();
+
+        if (walls.has(key(head.x, head.y))) return die();
+        // Self collision — the tail tip vacates this tick unless growing
+        const solid = game.grow > 0 ? game.snake.length : game.snake.length - 1;
+        for (let i = 0; i < solid; i++)
+            if (game.snake[i].x === head.x && game.snake[i].y === head.y) return die();
+
+        game.snake.unshift(head);
+        game.moved = true;
+
+        if (game.food && head.x === game.food.x && head.y === game.food.y) eat(head);
+        else if (game.pickup && head.x === game.pickup.x && head.y === game.pickup.y) take(head);
+
+        if (game.grow > 0) { game.grow--; game.prevTail = null; }
+        else game.prevTail = game.snake.pop();
+
+        if (game.pickup && game.time > game.pickup.until) game.pickup = null;
+    }
+
+    function eat(at) {
+        game.combo = game.time - game.comboAt < CFG.comboWindow ? game.combo + 1 : 1;
+        game.comboAt = game.time;
+        const pts = CFG.foodPts * game.combo * (game.fx.x2 > game.time ? 2 : 1);
+        game.score += pts;
+        game.grow += 1;
+        game.eaten++;
+        game.combo > 1 ? SFX.combo(game.combo) : SFX.eat();
+        burst(px(at.x) + C / 2, px(at.y) + C / 2, PAL.food, 8);
+        floatText(px(at.x) + C / 2, px(at.y) - 2, game.combo > 1 ? `+${pts} ×${game.combo}` : `+${pts}`, PAL.foodFloat);
+        if (game.eaten >= def().goal) return levelUp();
+        spawnFood();
+        maybeSpawnPickup();
+    }
+
+    function take(at) {
+        const { type } = game.pickup;
+        SFX.pickup();
+        burst(px(at.x) + C / 2, px(at.y) + C / 2, PICKUPS[type].color, 10);
+        if (type === 'bonus') {
+            const pts = CFG.bonusPts * (game.fx.x2 > game.time ? 2 : 1);
+            game.score += pts;
+            floatText(px(at.x) + C / 2, px(at.y) - 2, `+${pts}`, PICKUPS.bonus.color);
+        } else if (type === 'freeze') {
+            game.fx.slow = game.time + CFG.freezeMs;
+            floatText(px(at.x) + C / 2, px(at.y) - 2, 'slow', PICKUPS.freeze.color);
+        } else {
+            game.fx.x2 = game.time + CFG.starMs;
+            floatText(px(at.x) + C / 2, px(at.y) - 2, 'x2', PICKUPS.star.color);
+        }
+        game.pickup = null;
+    }
+
+    function levelUp() {
+        game.level++;
+        game.hold = CFG.levelHold;
+        SFX.level();
+        loadLevel();
+        toast(`level ${game.level + 1} — ${def().name.toLowerCase()}`);
+    }
+
+    function die() {
+        game.mode = 'dying';
+        game.dieT = 0;
+        SFX.crash();
+        const h = game.snake[0];
+        burst(px(h.x) + C / 2, px(h.y) + C / 2, PAL.glow, 14);
+        burst(px(h.x) + C / 2, px(h.y) + C / 2, PAL.food, 14);
+    }
+
+    // ═══ Flow ════════════════════════════════════════════════════════════
+    let toastTid;
+    function toast(text) {
+        $('#toast').text(text).cls('show');
+        clearTimeout(toastTid);
+        toastTid = setTimeout(() => $('#toast').cls('-show'), 1600);
+    }
+
+    function start() {
+        SFX.init();
+        Object.assign(game, {
+            mode: 'playing', level: 0, score: 0, combo: 0, comboAt: -1e9,
+            fx: { slow: 0, x2: 0 }, hold: 0
+        });
+        parts.length = 0;
+        loadLevel();
+        toast(`level 1 — ${def().name.toLowerCase()}`);
+        $('#h-best').text(game.best);
+        $('#scr-start').hide();
+        $('#scr-over').hide();
+    }
+
+    function showOver() {
+        game.mode = 'over';
+        const isBest = game.score > game.best;
+        if (isBest) {
+            game.best = game.score;
+            try { localStorage.setItem('snakeBest', game.best); } catch {}
+        }
+        $('#o-title').text(isBest ? '// new best!' : '// game over');
+        $('#o-sc').text(game.score);
+        $('#o-lv').text(game.level + 1);
+        $('#o-best').text(game.best);
+        $('#h-best').text(game.best);
+        $('#scr-over').show();
+    }
+
+    function togglePause() {
+        if (game.mode === 'playing') {
+            game.mode = 'paused';
+            $('#scr-pause').show();
+        } else if (game.mode === 'paused') {
+            game.mode = 'playing';
+            $('#scr-pause').hide();
+        }
+    }
+
+    // ═══ Input ═══════════════════════════════════════════════════════════
+    function steer(x, y) {
+        if (game.mode !== 'playing') return;
+        const last = game.queue[game.queue.length - 1] ?? game.dir;
+        if (game.queue.length >= 2) return;
+        if (last.x === x && last.y === y) return;                            // same way
+        if (last.x === -x && last.y === -y) return;                          // no 180°
+        game.queue.push({ x, y });
+    }
+
+    const DIRS = {
+        ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0],
+        ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1]
+    };
+
+    window.on('keydown', e => {
+        const c = e.code;
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) e.preventDefault();
+        if (c === 'KeyF') return toggleFullscreen();
+        if (game.mode === 'menu' || game.mode === 'over') {
+            if (c === 'Space' || c === 'Enter') start();
+            return;
+        }
+        if (DIRS[c]) steer(...DIRS[c]);
+        else if (c === 'KeyP' || c === 'Escape') togglePause();
+        else if (c === 'KeyM') SFX.toggle();
+    });
+
+    $.ready(() => {
+        $('#startBtn').on('click', start);
+        $('#retryBtn').on('click', start);
+        $('#scr-pause').on('click', togglePause);
+        $('#t-up').on('pointerdown', () => steer(0, -1));
+        $('#t-down').on('pointerdown', () => steer(0, 1));
+        $('#t-left').on('pointerdown', () => steer(-1, 0));
+        $('#t-right').on('pointerdown', () => steer(1, 0));
+
+        // Swipes on the board
+        let sx = 0, sy = 0;
+        board.on('pointerdown', e => { sx = e.clientX; sy = e.clientY; });
+        board.on('pointerup', e => {
+            const dx = e.clientX - sx, dy = e.clientY - sy;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+            Math.abs(dx) > Math.abs(dy) ? steer(Math.sign(dx), 0) : steer(0, Math.sign(dy));
+        });
+
+        document.on('visibilitychange', () => {
+            if (document.hidden && game.mode === 'playing') togglePause();
+        });
+
+        $('#h-best').text(game.best);
+    });
+
+    // ═══ HUD ═════════════════════════════════════════════════════════════
+    function hud() {
+        $('#h-sc').text(game.score);
+        $('#h-lv').text(game.level + 1);
+        $('#h-name').text(def().name.toLowerCase());
+        $('#h-prog').text(game.mode === 'playing' || game.mode === 'paused' ? `${game.eaten}/${def().goal}` : '');
+        const fx = $('#h-fx');
+        if (game.fx.x2 > game.time) {
+            fx.cls('star -freeze');
+            $('#h-fx b').text(`x2 ${Math.ceil((game.fx.x2 - game.time) / 1000)}s`);
+        } else if (game.fx.slow > game.time) {
+            fx.cls('freeze -star');
+            $('#h-fx b').text(`slow ${Math.ceil((game.fx.slow - game.time) / 1000)}s`);
+        } else fx.cls('-star -freeze');
+        $('#wrap').cls(game.fx.x2 > game.time ? 'fx-star' : '-fx-star');
+        $('#wrap').cls(game.fx.slow > game.time ? 'fx-freeze' : '-fx-freeze');
+    }
+
+    // ═══ Loop ════════════════════════════════════════════════════════════
+    let prev = performance.now();
+
+    function frame(now) {
+        const dt = Math.min(0.05, (now - prev) / 1000);
+        prev = now;
+        game.time += dt * 1000;
+
+        if (game.mode === 'playing') {
+            if (game.hold > 0) game.hold -= dt * 1000;
+            else {
+                game.acc += dt * 1000;
+                while (game.acc >= interval() && game.mode === 'playing') {
+                    game.acc -= interval();
+                    step();
+                }
+            }
+        } else if (game.mode === 'dying') {
+            game.dieT += dt;
+            if (game.dieT > 0.8) showOver();
+        }
+
+        drawGrid();
+        drawWalls();
+        drawFood();
+        drawPickup();
+        if (game.mode !== 'menu' && game.snake.length) {
+            // Render progress within the current tick (smooth glide)
+            const t = (game.mode === 'playing' || game.mode === 'paused') && game.moved && game.hold <= 0
+                ? Math.min(1, game.acc / interval())
+                : 1;
+            drawSnake(t);
+        }
+        drawParts(dt);
+        hud();
+        requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+</script>
+</body>
+</html>
