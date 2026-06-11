@@ -8,230 +8,48 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- qry stack -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry-ui.css">
+    <link rel="stylesheet" href="../../../qry-hub-theme.css">
     <script src="https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry.js"></script>
+
     <script type="module" id="typst"
             src="https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-all-in-one.ts@0.6.0/dist/esm/index.js"></script>
+
     <style>
-        /* ═══ THEME — inline copy of /theme.css ═══════════════════════════
-           Do not edit here: edit theme.css, then re-paste this block. ═══ */
-
-        :root {
-            --bg: #F4F7FB;
-            --card: #FFFFFF;
-            --ink: #0F1722;
-            --muted: #5B6B7D;
-            --accent: #0B6BCB;
-            --accent-soft: #E3EEFA;
-            --accent-glow: rgba(11, 107, 203, .25);
-            --border: #DCE4ED;
-            --ok: #15803D;
-            --warn: #B45309;
-            --err: #C2410C;
-            --radius: 12px;
-            --ring: 0 0 0 3px var(--accent-soft);
-            --shadow-card: 0 8px 20px rgba(15, 23, 34, .05);
-            --shadow-hover: 0 10px 24px rgba(11, 107, 203, .14);
-            --ease: cubic-bezier(.2, .8, .2, 1);
-            --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
-            --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        * { box-sizing: border-box; }
-
-        ::selection { background: var(--accent); color: #fff; }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            background-image: radial-gradient(rgba(11, 107, 203, .10) 1px, transparent 1px);
-            background-size: 26px 26px;
-            color: var(--ink);
-            font: 16px/1.5 var(--sans);
-        }
-
-        /* ── Header: command prompt ──────────────────────────────────── */
-        header h1 {
-            font: 700 2.4em/1.2 var(--mono);
-            letter-spacing: -.02em;
-            margin: 0 0 6px;
-        }
-
-        header h1 .prompt { color: var(--accent); }
-
-        header h1 .caret {
-            display: inline-block;
-            width: .55em;
-            height: 1.05em;
-            margin-left: 4px;
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent-glow);
-            vertical-align: text-bottom;
-            animation: blink 1.1s steps(1) infinite;
-        }
-
-        @keyframes blink { 50% { opacity: 0; } }
-
-        @media (prefers-reduced-motion: reduce) {
-            header h1 .caret { animation: none; }
-        }
-
-        header p { margin: 0; color: var(--muted); }
-
-        /* ── Panel (main card) ───────────────────────────────────────── */
-        #panel {
-            width: min(var(--panel-w, 980px), 100%);
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-card);
-            padding: 20px;
-        }
-
-        /* ── Controls (select, buttons) ──────────────────────────────── */
-        select, button {
-            font: 600 .95em var(--mono);
-            color: var(--ink);
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 14px;
-            cursor: pointer;
-            transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
-        }
-
-        select:hover, select:focus-visible, button:hover, button:focus-visible {
-            border-color: var(--accent);
-            box-shadow: var(--ring);
-            outline: none;
-        }
-
-        button.primary {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        /* ── Note (caption under the content) ────────────────────────── */
-        .note {
-            margin: 36px 0 28px;
-            text-align: center;
-            font: .9em var(--mono);
-            color: var(--muted);
-        }
-
-        /* ── Metrics (stable grid, no layout shift) ──────────────────── */
-        #metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
-            gap: 8px;
-        }
-
-        .metric {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 7px 10px;
-            text-align: center;
-        }
-
-        .metric .label {
-            display: block;
-            font: 600 .65em var(--mono);
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: var(--muted);
-        }
-
-        .metric .value {
-            font: 600 .95em var(--mono);
-            font-variant-numeric: tabular-nums;
-            color: var(--ink);
-            white-space: nowrap;
-        }
-
-        /* ═══ END THEME ═══════════════════════════════════════════════ */
-
-        /* ─── App: typstlive ─────────────────────────────────────────────── */
-        body {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 24px;
-        }
-
-        header { text-align: center; margin-bottom: 24px; }
-
-        #panel { --panel-w: 1180px; }
+        /* ─── App: typstlive (shared theme: ../../../qry-hub-theme.css) ── */
+        #panel { width: min(1180px, 100%); padding: 20px; }
 
         #split {
             display: grid;
             grid-template-columns: 340px 1fr;
             gap: 16px;
         }
-
         @media (max-width: 860px) { #split { grid-template-columns: 1fr; } }
 
-        /* ── Fields ──────────────────────────────────────────────────── */
-        label {
-            display: block;
-            font: 600 .8em var(--mono);
-            color: var(--muted);
-            margin-bottom: 6px;
-        }
-
-        .field { margin-bottom: 14px; }
-
-        input, textarea {
-            width: 100%;
-            padding: 9px 12px;
-            font: 1em var(--mono);
-            color: var(--ink);
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            outline: none;
-        }
-
-        textarea { resize: vertical; }
-
-        input:focus, textarea:focus {
-            border-color: var(--accent);
-            box-shadow: var(--ring);
-        }
-
-        #fields button {
-            width: 100%;
-            padding: 11px 0;
-            font: 600 .95em var(--mono);
-            color: #fff;
-            background: var(--accent);
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        #fields button:hover { filter: brightness(1.12); }
-        #fields button:disabled { opacity: .4; cursor: default; }
+        #fields sl-input, #fields sl-textarea { margin-bottom: 14px; }
+        #pdf { width: 100%; }
+        #pdf::part(base) { width: 100%; }
 
         #note {
             margin-top: 14px;
-            font: .8em/1.6 var(--mono);
-            color: var(--muted);
+            font: .8em/1.6 var(--qry-font-mono);
+            color: var(--qry-text-muted);
         }
 
         /* ── Preview ─────────────────────────────────────────────────── */
         #previewWrap {
             position: relative;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border: 1px solid var(--qry-line-strong);
+            border-radius: var(--qry-radius);
             background: #8E9DAD;
             overflow: auto;
             max-height: 78vh;
         }
-
         #preview { padding: 18px; }
-
         #preview svg {
             display: block;
             width: 100%;
@@ -239,55 +57,53 @@
             background: #fff;
             box-shadow: 0 4px 14px rgba(27, 39, 51, .25);
         }
-
         #loader {
             position: absolute;
             inset: 0;
             display: grid;
             place-items: center;
             background: rgba(228, 235, 244, .9);
-            font: .9em var(--mono);
-            color: var(--muted);
+            font: .9em var(--qry-font-mono);
+            color: var(--qry-text-muted);
             text-align: center;
         }
 
         #status {
             margin-top: 12px;
             padding: 9px 14px;
-            font: .82em/1.5 var(--mono);
-            background: var(--accent-soft);
-            border-radius: 8px;
-            color: var(--muted);
+            font: .82em/1.5 var(--qry-font-mono);
+            background: var(--qry-blue-50);
+            border-radius: var(--qry-radius-sm);
+            color: var(--qry-text-muted);
             white-space: pre-wrap;
             max-height: 7em;
             overflow: auto;
         }
-
-        #status.ok { color: var(--ok); }
-        #status.err { color: var(--err); background: #F9E8E7; }
+        #status.ok  { color: var(--qry-green); }
+        #status.err { color: var(--qry-red); background: rgba(var(--qry-red-rgb), .08); }
 
         /* ── Template (collapsed) ────────────────────────────────────── */
         details {
             margin-top: 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border: 1px solid var(--qry-line-strong);
+            border-radius: var(--qry-radius);
         }
-
         summary {
             padding: 10px 14px;
-            font: 600 .85em var(--mono);
-            color: var(--accent);
+            font: 600 .85em var(--qry-font-mono);
+            color: var(--qry-blue);
             cursor: pointer;
         }
-
         #template {
             width: 100%;
             min-height: 320px;
             padding: 14px;
-            font: .82em/1.55 var(--mono);
+            font: .82em/1.55 var(--qry-font-mono);
+            color: var(--qry-text);
+            background: var(--qry-surface);
             border: none;
-            border-top: 1px solid var(--border);
-            border-radius: 0 0 var(--radius) var(--radius);
+            border-top: 1px solid var(--qry-line-strong);
+            border-radius: 0 0 var(--qry-radius) var(--qry-radius);
             outline: none;
             resize: vertical;
             white-space: pre;
@@ -295,37 +111,22 @@
         }
     </style>
 </head>
-<body>
+<body class="hub-app">
 <header>
     <h1><span class="prompt">$</span> typst.live<span class="caret"></span></h1>
     <p>Remplis les champs — le document Typst se remet en page en direct.</p>
 </header>
 
-<div id="panel">
+<div id="panel" class="qry-card qry-card-body">
     <div id="split">
         <div id="fields">
-            <div class="field">
-                <label for="participant">participant·e</label>
-                <input id="participant" type="text" placeholder="Prénom Nom">
-            </div>
-            <div class="field">
-                <label for="etude">étude</label>
-                <input id="etude" type="text" value="Perception du mouvement en réalité virtuelle">
-            </div>
-            <div class="field">
-                <label for="lieu">lieu</label>
-                <input id="lieu" type="text" value="Fribourg">
-            </div>
-            <div class="field">
-                <label for="date">date</label>
-                <input id="date" type="date">
-            </div>
-            <div class="field">
-                <label for="remarques">remarques (optionnel)</label>
-                <textarea id="remarques" rows="4"
-                          placeholder="Tape un paragraphe ici et regarde le document s'allonger et se re-justifier…"></textarea>
-            </div>
-            <button id="pdf" disabled>télécharger le PDF</button>
+            <sl-input id="participant" label="participant·e" placeholder="Prénom Nom"></sl-input>
+            <sl-input id="etude" label="étude" value="Perception du mouvement en réalité virtuelle"></sl-input>
+            <sl-input id="lieu" label="lieu" value="Fribourg"></sl-input>
+            <sl-input id="date" label="date" type="date"></sl-input>
+            <sl-textarea id="remarques" label="remarques (optionnel)" rows="4"
+                         placeholder="Tape un paragraphe ici et regarde le document s'allonger et se re-justifier…"></sl-textarea>
+            <sl-button id="pdf" variant="primary" disabled>télécharger le PDF</sl-button>
             <p id="note">Contrairement à un PDF — figé une fois composé — Typst recompose tout le document
                 à chaque frappe : césures, justification et hauteur de page suivent le contenu.</p>
         </div>
@@ -344,7 +145,9 @@
     </details>
 </div>
 
-<script>
+<script type="module">
+    import { toast, download } from 'https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry-kit.js';
+
     // ═══ Template: a fixed Typst document fed by the fields ══════════════
     const TEMPLATE = `#set page(width: 16cm, height: auto, margin: 1.6cm)
 #set text(lang: "fr", size: 11pt)
@@ -456,16 +259,15 @@ Date : #date_str #h(2.5cm) Lieu : #lieu
 
         let timer;
         const live = () => { clearTimeout(timer); timer = setTimeout(compile, 120); };
+        // native input events are composed → they bubble out of sl-input/sl-textarea
         ['#participant', '#etude', '#lieu', '#date', '#remarques', '#template']
             .forEach(s => $(s).on('input', live));
 
         $('#pdf').on('click', async () => {
             try {
                 const bytes = await $typst.pdf({ mainContent: buildSource(readFields(), $('#template').val()) });
-                const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-                const a = $.create('a', { href: url, download: 'formulaire-consentement.pdf' });
-                a.click();
-                URL.revokeObjectURL(url);
+                download(bytes, 'formulaire-consentement.pdf', 'application/pdf');
+                toast('formulaire-consentement.pdf téléchargé', 'success', 1800);
             } catch (err) { setStatus('err', String(err?.message ?? err)); }
         });
 

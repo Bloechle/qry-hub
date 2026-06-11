@@ -1,0 +1,48 @@
+/**
+ * qry-hub-theme.css — qry-ui tokens re-pointed at the hub palette.
+ * Load AFTER qry-ui.css. Apps three levels deep: href="../../../qry-hub-theme.css"
+ */
+:root {
+    --qry-blue:     #0B6BCB;
+    --qry-blue-50:  #E3EEFA;
+    --qry-blue-100: #C2DCF5;
+    --qry-blue-200: #8FBFEC;
+    --qry-blue-300: #5CA2E2;
+    --qry-blue-400: #2F86D6;
+    --qry-blue-500: #0B6BCB;
+    --qry-blue-600: #0958A8;
+    --qry-blue-700: #074584;
+    --qry-blue-800: #053161;
+    --qry-blue-900: #031E3D;
+    --qry-accent-rgb: 11, 107, 203;
+    --qry-bg:        #F4F7FB;
+    --qry-radius:    12px;
+    --qry-radius-sm: 8px;
+    --qry-radius-xs: 6px;
+    --qry-font:      'Inter', system-ui, sans-serif;
+    --qry-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Hub signature: dotted background + "$ app.name" terminal header */
+body.hub-app {
+    background-image: radial-gradient(rgba(var(--qry-accent-rgb), .10) 1px, transparent 1px);
+    background-size: 26px 26px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+}
+body.hub-app > header { text-align: center; margin-bottom: 24px; }
+body.hub-app > header h1 { font: 700 2.4em/1.2 var(--qry-font-mono); letter-spacing: -.02em; margin: 0 0 6px; }
+body.hub-app > header h1 .prompt { color: var(--qry-blue); }
+body.hub-app > header h1 .caret {
+    display: inline-block;
+    width: .55em; height: 1.05em; margin-left: 4px;
+    background: var(--qry-blue);
+    box-shadow: 0 0 8px rgba(var(--qry-accent-rgb), .25);
+    vertical-align: text-bottom;
+    animation: hub-blink 1.1s steps(1) infinite;
+}
+@keyframes hub-blink { 50% { opacity: 0; } }
+body.hub-app > header p { color: var(--qry-text-muted); }

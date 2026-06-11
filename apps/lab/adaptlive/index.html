@@ -8,148 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- qry stack -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry-ui.css">
+    <link rel="stylesheet" href="../../../qry-hub-theme.css">
     <script src="https://cdn.jsdelivr.net/gh/Bloechle/qry@1.0.0/qry.js"></script>
+
     <style>
-        /* ═══ THEME — inline copy of /theme.css ═══════════════════════════
-           Do not edit here: edit theme.css, then re-paste this block. ═══ */
-
-        :root {
-            --bg: #F4F7FB;
-            --card: #FFFFFF;
-            --ink: #0F1722;
-            --muted: #5B6B7D;
-            --accent: #0B6BCB;
-            --accent-soft: #E3EEFA;
-            --accent-glow: rgba(11, 107, 203, .25);
-            --border: #DCE4ED;
-            --ok: #15803D;
-            --warn: #B45309;
-            --err: #C2410C;
-            --radius: 12px;
-            --ring: 0 0 0 3px var(--accent-soft);
-            --shadow-card: 0 8px 20px rgba(15, 23, 34, .05);
-            --shadow-hover: 0 10px 24px rgba(11, 107, 203, .14);
-            --ease: cubic-bezier(.2, .8, .2, 1);
-            --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
-            --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        * { box-sizing: border-box; }
-
-        ::selection { background: var(--accent); color: #fff; }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            background-image: radial-gradient(rgba(11, 107, 203, .10) 1px, transparent 1px);
-            background-size: 26px 26px;
-            color: var(--ink);
-            font: 16px/1.5 var(--sans);
-        }
-
-        /* ── Header: command prompt ──────────────────────────────────── */
-        header h1 {
-            font: 700 2.4em/1.2 var(--mono);
-            letter-spacing: -.02em;
-            margin: 0 0 6px;
-        }
-
-        header h1 .prompt { color: var(--accent); }
-
-        header h1 .caret {
-            display: inline-block;
-            width: .55em;
-            height: 1.05em;
-            margin-left: 4px;
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent-glow);
-            vertical-align: text-bottom;
-            animation: blink 1.1s steps(1) infinite;
-        }
-
-        @keyframes blink { 50% { opacity: 0; } }
-
-        @media (prefers-reduced-motion: reduce) {
-            header h1 .caret { animation: none; }
-        }
-
-        header p { margin: 0; color: var(--muted); }
-
-        /* ── Panel (main card) ───────────────────────────────────────── */
-        #panel {
-            width: min(var(--panel-w, 980px), 100%);
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-card);
-            padding: 20px;
-        }
-
-        /* ── Controls (select, buttons) ──────────────────────────────── */
-        select, button {
-            font: 600 .95em var(--mono);
-            color: var(--ink);
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 14px;
-            cursor: pointer;
-            transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
-        }
-
-        select:hover, select:focus-visible, button:hover, button:focus-visible {
-            border-color: var(--accent);
-            box-shadow: var(--ring);
-            outline: none;
-        }
-
-        button.primary {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        /* ── Note (caption under the content) ────────────────────────── */
-        .note {
-            margin: 36px 0 28px;
-            text-align: center;
-            font: .9em var(--mono);
-            color: var(--muted);
-        }
-
-        /* ── Metrics (stable grid, no layout shift) ──────────────────── */
-        #metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
-            gap: 8px;
-        }
-
-        .metric {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 7px 10px;
-            text-align: center;
-        }
-
-        .metric .label {
-            display: block;
-            font: 600 .65em var(--mono);
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: var(--muted);
-        }
-
-        .metric .value {
-            font: 600 .95em var(--mono);
-            font-variant-numeric: tabular-nums;
-            color: var(--ink);
-            white-space: nowrap;
-        }
-
-        /* ═══ END THEME ═══════════════════════════════════════════════ */
-
-        /* ─── App: adaptlive ──────────────────────────────────────────── */
+        /* ─── App: adaptlive (shared theme: ../../../qry-hub-theme.css) ── */
         :root {
             --psi: #0B6BCB;
             --quest: #1E8E5A;
@@ -158,18 +26,9 @@
             --truth: #B45309;
         }
 
-        body {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-        }
+        body.hub-app { justify-content: center; }
 
-        header { text-align: center; margin-bottom: 24px; }
-
-        #panel { --panel-w: 1020px; }
+        #panel { width: min(1020px, 100%); padding: 20px; }
 
         /* Controls */
         #controls {
@@ -179,91 +38,99 @@
             gap: 14px;
             margin-bottom: 14px;
         }
-
         .field { display: flex; flex-direction: column; gap: 3px; }
-
         .field label {
-            font: 600 .65em var(--mono);
+            font: 600 .65em var(--qry-font-mono);
             text-transform: uppercase;
             letter-spacing: .08em;
-            color: var(--muted);
+            color: var(--qry-text-muted);
         }
-
-        .field label output { color: var(--ink); }
-
-        input[type="range"] { width: 120px; accent-color: var(--accent); }
-
+        .field label output { color: var(--qry-text); }
+        input[type="range"] { width: 120px; accent-color: var(--qry-blue); }
+        #controls sl-select { min-width: 110px; }
         #buttons { display: flex; gap: 8px; margin-left: auto; }
 
         /* Method chips (toggle + legend) */
         #chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-
         .chip {
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            font: 600 .8em var(--mono);
-            color: var(--ink);
-            background: var(--card);
-            border: 1px solid var(--border);
+            font: 600 .8em var(--qry-font-mono);
+            color: var(--qry-text);
+            background: var(--qry-surface);
+            border: 1px solid var(--qry-line-strong);
             border-radius: 999px;
             padding: 5px 12px;
             cursor: pointer;
             user-select: none;
-            transition: border-color .18s var(--ease), opacity .18s var(--ease);
+            transition: border-color .18s var(--qry-ease), opacity .18s var(--qry-ease);
         }
-
-        .chip .swatch {
-            width: 11px;
-            height: 11px;
-            border-radius: 50%;
-            background: var(--c);
-        }
-
+        .chip .swatch { width: 11px; height: 11px; border-radius: 50%; background: var(--c); }
         .chip:hover { border-color: var(--c); }
         .chip.on { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
         .chip:not(.on) { opacity: .45; }
-        .chip:not(.on) .swatch { background: var(--muted); }
+        .chip:not(.on) .swatch { background: var(--qry-text-muted); }
 
         /* Chart */
         #chart {
             display: block;
             width: 100%;
             aspect-ratio: 900 / 380;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
+            background: var(--qry-bg);
+            border: 1px solid var(--qry-line-strong);
+            border-radius: var(--qry-radius);
             user-select: none;
         }
-
-        .grid-line { stroke: #DCE4ED; stroke-width: 1; }
+        .grid-line { stroke: var(--qry-blue-50); stroke-width: 1; }
         .axis-line { stroke: #93A7BC; stroke-width: 1.5; }
-        .tick-label { font: 11px var(--mono); fill: var(--muted); }
-        .axis-title { font: 600 12px var(--mono); fill: var(--muted); }
+        .tick-label { font: 11px var(--qry-font-mono); fill: var(--qry-text-muted); }
+        .axis-title { font: 600 12px var(--qry-font-mono); fill: var(--qry-text-muted); }
         .truth-band { fill: var(--truth); opacity: .08; }
         .truth-line { stroke: var(--truth); stroke-width: 2; stroke-dasharray: 6 5; }
-        .truth-label { font: 600 12px var(--mono); fill: var(--truth); }
+        .truth-label { font: 600 12px var(--qry-font-mono); fill: var(--truth); }
         .est-line { fill: none; stroke-width: 2.5; }
         .trial-dot { stroke-width: 1.5; }
 
-        .note { margin: 20px 0 16px; }
+        .note { margin: 20px 0 16px; text-align: center; font: .9em var(--qry-font-mono); color: var(--qry-text-muted); }
 
-        /* Metrics: estimate colored per method */
-        .metric .value.est { color: var(--c); }
-        .metric .delta {
-            display: block;
-            font: .7em var(--mono);
-            color: var(--muted);
+        /* Metrics (generated markup: .metric > .label / .value / .delta) */
+        #metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+            gap: 8px;
         }
+        .metric {
+            background: var(--qry-bg);
+            border: 1px solid var(--qry-line-strong);
+            border-radius: var(--qry-radius-sm);
+            padding: 7px 10px;
+            text-align: center;
+        }
+        .metric .label {
+            display: block;
+            font: 600 .65em var(--qry-font-mono);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--qry-text-muted);
+        }
+        .metric .value {
+            font: 600 .95em var(--qry-font-mono);
+            font-variant-numeric: tabular-nums;
+            color: var(--qry-text);
+            white-space: nowrap;
+        }
+        .metric .value.est { color: var(--c); }
+        .metric .delta { display: block; font: .7em var(--qry-font-mono); color: var(--qry-text-muted); }
     </style>
 </head>
-<body>
+<body class="hub-app">
 <header>
     <h1><span class="prompt">$</span> adapt.live<span class="caret"></span></h1>
     <p>Four adaptive threshold methods racing on a simulated observer.</p>
 </header>
 
-<div id="panel">
+<div id="panel" class="qry-card qry-card-body">
     <div id="controls">
         <div class="field">
             <label>Threshold <output id="o-thr">0.35</output></label>
@@ -277,27 +144,21 @@
             <label>Lapse <output id="o-lapse">0.02</output></label>
             <input id="c-lapse" type="range" min="0" max="0.10" step="0.01" value="0.02">
         </div>
-        <div class="field">
-            <label>Trials</label>
-            <select id="c-trials">
-                <option>25</option>
-                <option selected>50</option>
-                <option>75</option>
-                <option>100</option>
-            </select>
-        </div>
-        <div class="field">
-            <label>Speed</label>
-            <select id="c-speed">
-                <option value="120">slow</option>
-                <option value="40" selected>fast</option>
-                <option value="0">instant</option>
-            </select>
-        </div>
+        <sl-select id="c-trials" label="Trials" size="small" value="50">
+            <sl-option value="25">25</sl-option>
+            <sl-option value="50">50</sl-option>
+            <sl-option value="75">75</sl-option>
+            <sl-option value="100">100</sl-option>
+        </sl-select>
+        <sl-select id="c-speed" label="Speed" size="small" value="40">
+            <sl-option value="120">slow</sl-option>
+            <sl-option value="40">fast</sl-option>
+            <sl-option value="0">instant</sl-option>
+        </sl-select>
         <div id="buttons">
-            <button id="b-run" class="primary">Run</button>
-            <button id="b-step">Step</button>
-            <button id="b-reset">Reset</button>
+            <sl-button id="b-run" size="small" variant="primary">Run</sl-button>
+            <sl-button id="b-step" size="small">Step</sl-button>
+            <sl-button id="b-reset" size="small">Reset</sl-button>
         </div>
     </div>
 
@@ -769,7 +630,7 @@
         bind('#c-thr', '#o-thr', 'trueThreshold', parseFloat, v => v.toFixed(2));
         bind('#c-slope', '#o-slope', 'trueSlope', parseFloat);
         bind('#c-lapse', '#o-lapse', 'lapseRate', parseFloat, v => v.toFixed(2));
-        $('#c-trials').on('change', () => { config.maxTrials = +$('#c-trials').val(); reset(); });
+        $('#c-trials').on('sl-change', () => { config.maxTrials = +$('#c-trials').val(); reset(); });
 
         $('#b-run').on('click', () => state.timer ? stop() : run());
         $('#b-step').on('click', () => { stop(); stepOnce(); });
