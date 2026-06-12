@@ -1,11 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════════════
    qry.hub — theme.css (reference) · "studio tech"
 
-   Canonical source of the shared terminal look: tokens, command-prompt
-   header, panel, controls, note, metrics.
+   LEGACY theme — still the canonical source for the three pages that embed
+   it inline (index.html, apps/edu/algolive, apps/edu/trigolive). Newer apps
+   use the qry stack instead: qry-ui.css (CDN) + qry-hub-theme.css
+   (see README → Theming). Prefer that route for new apps.
 
-   NOT linked at runtime. Apps that opt in copy this file VERBATIM into
-   their <style>, between the THEME / END THEME markers, so every page
+   NOT linked at runtime. The three opted-in pages copy this file VERBATIM
+   into their <style>, between the THEME / END THEME markers, so each page
    stays fully self-contained (works from file://, copyable as one file).
 
    Opted-in pages must also load the theme fonts:
