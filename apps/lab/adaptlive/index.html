@@ -92,34 +92,9 @@
         .est-line { fill: none; stroke-width: 2.5; }
         .trial-dot { stroke-width: 1.5; }
 
-        .note { margin: 20px 0 16px; text-align: center; font: .9em var(--qry-font-mono); color: var(--qry-text-muted); }
-
-        /* Metrics (generated markup: .metric > .label / .value / .delta) */
-        #metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
-            gap: 8px;
-        }
-        .metric {
-            background: var(--qry-bg);
-            border: 1px solid var(--qry-line-strong);
-            border-radius: var(--qry-radius-sm);
-            padding: 7px 10px;
-            text-align: center;
-        }
-        .metric .label {
-            display: block;
-            font: 600 .65em var(--qry-font-mono);
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: var(--qry-text-muted);
-        }
-        .metric .value {
-            font: 600 .95em var(--qry-font-mono);
-            font-variant-numeric: tabular-nums;
-            color: var(--qry-text);
-            white-space: nowrap;
-        }
+        /* Note + metrics: shared via ../../../qry-hub-theme.css — local tweaks only
+           (generated markup: .metric > .label / .value / .delta) */
+        .note { margin: 20px 0 16px; }
         .metric .value.est { color: var(--c); }
         .metric .delta { display: block; font: .7em var(--qry-font-mono); color: var(--qry-text-muted); }
     </style>

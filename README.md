@@ -1,6 +1,6 @@
 # $ qry.hub
 
-Single-page launcher for my mini webapps — built with [qry.js](https://github.com/Bloechle/qry-js). The hub page itself has zero other dependencies; individual apps may pull in the wider qry stack or their own libraries.
+Single-page launcher for my mini webapps — built with [qry.js](https://github.com/Bloechle/qry-js) and themed by the qry stack (`qry-ui.css` + `qry-hub-theme.css`); individual apps may pull in Shoelace widgets or their own libraries on top.
 
 **Live → [bloechle.github.io/qry-hub](https://bloechle.github.io/qry-hub/)**
 
@@ -10,8 +10,7 @@ Single-page launcher for my mini webapps — built with [qry.js](https://github.
 qry-hub/
 ├── index.html          ← the hub (categorized cards + live filter)
 ├── favicon.svg
-├── theme.css           ← legacy inline theme (see Theming)
-├── qry-hub-theme.css   ← qry-ui token override (see Theming)
+├── qry-hub-theme.css   ← qry-ui token override + hub signature (see Theming)
 └── apps/
     ├── edu/            algolive · trigolive · namecards · examtimer
     ├── game/           snake · dodgerun · singularity
@@ -45,16 +44,17 @@ Sections without apps are skipped automatically.
 
 ## Theming
 
-Three regimes coexist — when adding a new app, prefer the **qry stack** one:
+Two regimes — when adding a new app, prefer the **qry stack** one:
 
 | Regime | Pages | How it works |
 |---|---|---|
-| **qry stack** (current) | namecards · adaptlive · consentform · pdfsign · paintpad · typstlive | Link `qry-ui.css` (CDN) + `../../../qry-hub-theme.css`, which re-points the qry-ui tokens at the hub palette and adds the `body.hub-app` dotted background + `$ app.name` terminal header. Load order: Shoelace themes → qry-ui.css → qry-hub-theme.css. App styles go in the page's own `<style>`, marked `/* ─── App: <name> (shared theme: …) ─── */`. |
-| **Legacy inline** | `index.html` · algolive · trigolive | `theme.css` copied verbatim into the page's `<style>` between the `THEME` / `END THEME` banners, so the page stays a single self-contained file. To change the look: edit `theme.css`, then re-paste the block into each of these three pages. They also load the theme fonts (JetBrains Mono + Inter) via the Google Fonts `<link>` documented at the top of `theme.css`. |
+| **qry stack** (default) | `index.html` · algolive · trigolive · namecards · adaptlive · consentform · pdfsign · paintpad · typstlive | Link `qry-ui.css` (CDN) + `qry-hub-theme.css` (`../../../qry-hub-theme.css` from an app, three levels deep), which re-points the qry-ui tokens at the hub palette and adds the `body.hub-app` dotted background + `$ app.name` terminal header. Pages that use Shoelace widgets load it first — order: Shoelace `light.css` + autoloader → qry-ui.css → qry-hub-theme.css; widget-less pages (the hub itself, trigolive) skip Shoelace entirely. App styles go in the page's own `<style>`, marked `/* ─── App: <name> (shared theme: …) ─── */`, using `--qry-*` tokens only. `qry-hub-theme.css` also ships two shared hub components — the `.note` caption and the compact `.metric` strip (`#metrics` grid) used by algolive, trigolive and adaptlive. |
 | **Own identity** | examtimer · dodgerun · snake · singularity | Fully self-styled; no shared theme. |
 
-The hub apps that use the qry stack are light-only by design: they load only
-Shoelace's `light.css` and never call `theme.init()`.
+The qry-stack pages are light-only by design: they load only Shoelace's
+`light.css` (when they need Shoelace at all) and never call `theme.init()`.
+To change the hub look, edit `qry-hub-theme.css` — every qry-stack page picks
+it up on reload; there is nothing to re-paste.
 
 ## Run
 
