@@ -1,6 +1,6 @@
 # $ qry.hub
 
-Single-page launcher for my mini webapps — built with [qry.js](https://github.com/Bloechle/qry). The hub page itself has zero other dependencies; individual apps may pull in the wider qry stack or their own libraries.
+Single-page launcher for my mini webapps — built with [qry.js](https://github.com/Bloechle/qry-js). The hub page itself has zero other dependencies; individual apps may pull in the wider qry stack or their own libraries.
 
 **Live → [bloechle.github.io/qry-hub](https://bloechle.github.io/qry-hub/)**
 
@@ -61,7 +61,7 @@ Shoelace's `light.css` and never call `theme.init()`.
 Open `index.html` in a browser — fully static, no build, no server. qry.js is loaded from the CDN:
 
 ```
-https://cdn.jsdelivr.net/gh/Bloechle/qry@1.1.0/qry.js
+https://cdn.jsdelivr.net/gh/Bloechle/qry-js@1.1.0/qry.js
 ```
 
 ## License
